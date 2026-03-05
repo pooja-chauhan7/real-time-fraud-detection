@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Fraud Detection Dashboard</h1>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span id="connection-status">Connecting...</span>
+            </div>
+        </header>
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <h3>Total Transactions</h3>
+                    <p class="stat-value" id="total-transactions">0</p>
+                </div>
+            </div>
+            <div class="stat-card fraud">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-content">
+                    <h3>Fraud Transactions</h3>
+                    <p class="stat-value" id="fraud-transactions">0</p>
+                </div>
+            </div>
+            <div class="stat-card percentage">
+                <div class="stat-icon">📈</div>
+                <div class="stat-content">
+                    <h3>Fraud Rate</h3>
+                    <p class="stat-value" id="fraud-percentage">0%</p>
+                </div>
+            </div>
+            <div class="stat-card alerts">
+                <div class="stat-icon">🔔</div>
+                <div class="stat-content">
+                    <h3>Active Alerts</h3>
+                    <p class="stat-value" id="active-alerts">0</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Transactions Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Recent Transactions</h2>
+                    <div class="panel-actions">
+                        <button class="btn-refresh" onclick="refreshTransactions()">🔄 Refresh</button>
+                        <label class="toggle">
+                            <input type="checkbox" id="auto-refresh" checked>
+                            <span>Auto-refresh</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Amount</th>
+                                <th>Location</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body">
+                            <tr class="loading">
+                                <td colspan="6">Loading transactions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Alerts Panel -->
+            <div class="panel alerts-panel">
+                <div class="panel-header">
+                    <h2>🚨 Fraud Alerts</h2>
+                    <span class="badge" id="alert-count">0</span>
+                </div>
+                <div class="panel-content">
+                    <div id="alerts-container">
+                        <div class="no-alerts">No fraud alerts detected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
+

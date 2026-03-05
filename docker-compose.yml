@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # ZooKeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: fraud-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - fraud-network
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: fraud-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - fraud-network
+
+  # MongoDB
+  mongodb:
+    image: mongo:6.0
+    hostname: mongodb
+    container_name: fraud-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: fraud_detection
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - fraud-network
+
+  # Mongo Express (Web UI for MongoDB)
+  mongo-express:
+    image: mongo-express:0.54.0
+    hostname: mongo-express
+    container_name: fraud-mongo-express
+    depends_on:
+      - mongodb
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    networks:
+      - fraud-network
+
+  # Backend API
+  backend-api:
+    build:
+      context: ./backend_api
+      dockerfile: Dockerfile
+    hostname: backend-api
+    container_name: fraud-backend-api
+    depends_on:
+      - mongodb
+    ports:
+      - "5000:5000"
+    environment:
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_USER: admin
+      MONGO_PASSWORD: password
+      MONGO_DB: fraud_detection
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      API_HOST: 0.0.0.0
+      API_PORT: 5000
+    volumes:
+      - ./backend_api:/app
+      - ./ml_model:/app/ml_model
+    networks:
+      - fraud-network
+    command: python app.py
+
+  # Frontend Dashboard
+  frontend:
+    image: nginx:alpine
+    hostname: frontend
+    container_name: fraud-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend_dashboard:/usr/share/nginx/html:ro
+    networks:
+      - fraud-network
+    depends_on:
+      - backend-api
+
+networks:
+  fraud-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+    driver: local
+

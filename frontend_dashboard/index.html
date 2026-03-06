@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,9 +11,20 @@
     <div class="container">
         <header>
             <h1>🛡️ Fraud Detection Dashboard</h1>
-            <div class="status-indicator">
-                <span class="status-dot"></span>
-                <span id="connection-status">Connecting...</span>
+            <div class="header-actions">
+                <!-- Mobile Verification Section -->
+                <div class="verification-section" id="verification-section">
+                    <span class="verified-badge" id="verified-badge" style="display: none;">
+                        ✓ Verified
+                    </span>
+                    <button class="btn-verify" id="btn-verify" onclick="showVerificationModal()">
+                        🔐 Verify Mobile
+                    </button>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="connection-status">Connecting...</span>
+                </div>
             </div>
         </header>
         
@@ -94,6 +106,62 @@
                         <div class="no-alerts">No fraud alerts detected</div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Verification Modal -->
+    <div class="modal" id="verification-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📱 Mobile Number Verification</h3>
+                <span class="modal-close" onclick="closeVerificationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Enter Mobile Number -->
+                <div id="step-phone">
+                    <p class="modal-description">
+                        Enter your mobile number to receive fraud alerts via SMS.
+                        You'll receive an OTP to verify your number.
+                    </p>
+                    <div class="form-group">
+                        <label for="mobile-number">Mobile Number</label>
+                        <input type="tel" id="mobile-number" placeholder="+1 (555) 123-4567" class="form-input">
+                    </div>
+                    <button class="btn-primary" onclick="sendOTP()">Send OTP</button>
+                    <p class="otp-timer" id="otp-timer"></p>
+                </div>
+                
+                <!-- Step 2: Enter OTP -->
+                <div id="step-otp" style="display: none;">
+                    <p class="modal-description">
+                        Enter the 6-digit OTP sent to your mobile number.
+                        The code expires in 5 minutes.
+                    </p>
+                    <div class="form-group">
+                        <label for="otp-code">OTP Code</label>
+                        <input type="text" id="otp-code" placeholder="Enter 6-digit OTP" class="form-input otp-input" maxlength="6">
+                    </div>
+                    <button class="btn-primary" onclick="verifyOTP()">Verify OTP</button>
+                    <p class="resend-link">
+                        Didn't receive the code? 
+                        <a href="#" onclick="sendOTP(); return false;">Resend OTP</a>
+                    </p>
+                </div>
+                
+                <!-- Step 3: Verified -->
+                <div id="step-verified" style="display: none;">
+                    <div class="success-message">
+                        <span class="success-icon">✓</span>
+                        <h4>Verification Successful!</h4>
+                        <p>Your mobile number has been verified.</p>
+                        <p class="verified-number" id="verified-number"></p>
+                    </div>
+                    <button class="btn-primary" onclick="closeVerificationModal()">Done</button>
+                </div>
+                
+                <!-- Error Message -->
+                <div class="error-message" id="verification-error" style="display: none;"></div>
             </div>
         </div>
     </div>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Real-Time Fraud Detection Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Real-Time Fraud Detection</h1>
+                    <p class="subtitle">Bank Transaction Monitoring System</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="connection-status">Connecting...</span>
+                </div>
+                <div class="system-time">
+                    <i class="fas fa-clock"></i>
+                    <span id="current-time">--:--:--</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Total Transactions</h3>
+                    <p class="stat-value" id="total-transactions">0</p>
+                    <p class="stat-trend" id="txn-trend"><i class="fas fa-arrow-up"></i> Live</p>
+                </div>
+            </div>
+            
+            <div class="stat-card normal">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Normal Transactions</h3>
+                    <p class="stat-value" id="normal-transactions">0</p>
+                    <p class="stat-trend normal-trend" id="normal-trend">--</p>
+                </div>
+            </div>
+            
+            <div class="stat-card fraud">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Fraud Detected</h3>
+                    <p class="stat-value" id="fraud-transactions">0</p>
+                    <p class="stat-trend fraud-trend" id="fraud-trend">--</p>
+                </div>
+            </div>
+            
+            <div class="stat-card alerts">
+                <div class="stat-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Active Alerts</h3>
+                    <p class="stat-value" id="active-alerts">0</p>
+                    <p class="stat-trend" id="alert-trend">Pending</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2><i class="fas fa-chart-pie"></i> Fraud vs Normal Transactions</h2>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="legend-dot normal"></span> Normal</span>
+                        <span class="legend-item"><span class="legend-dot fraud"></span> Fraud</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="fraudChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2><i class="fas fa-chart-line"></i> Transaction Volume</h2>
+                    <div class="time-filter">
+                        <button class="time-btn active" data-range="1m">1 Min</button>
+                        <button class="time-btn" data-range="5m">5 Min</button>
+                        <button class="time-btn" data-range="15m">15 Min</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="volumeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Live Transaction Feed -->
+            <div class="panel transactions-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-stream"></i> Live Transaction Feed</h2>
+                    <div class="panel-actions">
+                        <span class="live-indicator">
+                            <span class="live-dot"></span>
+                            LIVE
+                        </span>
+                        <button class="btn-icon" onclick="refreshTransactions()" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div class="table-wrapper">
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>User</th>
+                                    <th>Amount</th>
+                                    <th>Merchant</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                    <th>Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-body">
+                                <tr class="loading-row">
+                                    <td colspan="7">
+                                        <div class="loading-spinner">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                            Loading transactions...
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fraud Alerts Panel -->
+            <div class="panel alerts-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-exclamation-circle"></i> Fraud Alerts</h2>
+                    <span class="badge" id="alert-badge">0</span>
+                </div>
+                <div class="panel-content">
+                    <div id="alerts-container">
+                        <div class="no-alerts">
+                            <i class="fas fa-check-circle"></i>
+                            <p>No fraud alerts detected</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Fraud Analysis -->
+        <div class="analysis-section">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-analytics"></i> Transaction Analysis</h2>
+                </div>
+                <div class="panel-content analysis-grid">
+                    <div class="analysis-card">
+                        <h4>Average Transaction Amount</h4>
+                        <p class="analysis-value" id="avg-amount">$0.00</p>
+                    </div>
+                    <div class="analysis-card">
+                        <h4>Largest Transaction</h4>
+                        <p class="analysis-value" id="max-amount">$0.00</p>
+                    </div>
+                    <div class="analysis-card">
+                        <h4>Fraud Rate</h4>
+                        <p class="analysis-value" id="fraud-rate">0%</p>
+                    </div>
+                    <div class="analysis-card">
+                        <h4>Transactions/min</h4>
+                        <p class="analysis-value" id="txn-per-min">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="charts.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

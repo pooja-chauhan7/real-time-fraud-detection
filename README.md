@@ -1,165 +1,146 @@
-# Real-Time Fraud Detection System
- HEAD
-A prototype implementation demonstrating a complete architecture for detecting fraudulent bank transactions in real-time using Apache Kafka, Apache Spark, and Machine Learning.
+# 🛡️ Real-Time Fraud Detection System
 
-## Architecture Overview
+A comprehensive real-time fraud detection system for bank transactions built with Python, Flask, Machine Learning, and includes OTP Verification, SMS/Email Alerts, and Call Fraud Detection.
+
+## 📋 Project Overview
+
+This project demonstrates a complete fraud detection pipeline:
+- **Transaction Generator** - Simulates real bank transactions
+- **ML Model** - Rule-based + ML hybrid for fraud detection
+- **Backend API** - Flask REST API with all features
+- **Frontend Dashboard** - Real-time monitoring with auto-reconnect
+
+## 🎯 Features
+
+### Backend
+- ✅ RESTful API with Flask
+- ✅ Machine Learning model for fraud detection (Rule-based + ML hybrid)
+- ✅ Real-time transaction processing
+- ✅ Fraud probability scoring
+- ✅ Transaction history and alerts
+- ✅ Auto-start live transaction stream
+- ✅ **OTP Verification System** - Verify mobile number before calls
+- ✅ **SMS Alerts** - Simulated SMS for fraud alerts
+- ✅ **Email Alerts** - SMTP email notifications for suspicious activity
+- ✅ **Call Fraud Detection** - Detect suspicious calling patterns
+- ✅ **Admin Dashboard** - View all suspicious activities
+
+### Frontend
+- ✅ Modern dark-themed dashboard
+- ✅ Live transaction feed (auto-refreshes every 3 seconds)
+- ✅ Fraud alerts panel with notifications
+- ✅ Real-time statistics
+- ✅ **Auto-reconnect** - Automatically reconnects when backend restarts
+- ✅ **Auto-start stream** - Automatically starts transaction stream
+
+## 🚀 Quick Start
+
+### Step 1: Install Dependencies
 
 ```
-[Kafka Producer] -> [Kafka Topic] -> [Spark Streaming] -> [ML Model] -> [MongoDB] -> [Flask API] -> [Frontend Dashboard]
-```
-
-## Project Structure
-
-```
-/project
-├── producer/                    # Kafka Producer - generates fake transactions
-│   ├── transaction_generator.py
-│   └── kafka_producer.py
-├── consumer/                    # Kafka Consumer - receives transactions
-│   └── kafka_consumer.py
-├── spark_processing/           # Spark Streaming - processes data
-│   └── spark_processor.py
-├── ml_model/                   # ML Fraud Detection Model
-│   ├── train_model.py
-│   ├── fraud_detector.py
-│   ├── sample_data.csv
-│   └── model.pkl
-├── backend_api/                # Flask REST API
-│   ├── app.py
-│   └── requirements.txt
-├── frontend_dashboard/         # Web Dashboard
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── database/                   # Database scripts
-│   ├── init_db.py
-│   └── schema.sql
-├── docker-compose.yml          # Docker services
-├── requirements.txt            # Python dependencies
-└── README.md
-```
-
-## Prerequisites
-
-- Python 3.8+
-- Docker and Docker Compose
-- MongoDB
-- Apache Kafka
-- Apache Spark
-
-## Quick Start
-
-### Option 1: Using Docker Compose (Recommended)
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Check services
-docker-compose ps
-```
-
-### Option 2: Manual Setup
-
-1. **Install Python dependencies:**
-```bash
+bash
+cd c:\Users\Pooja\Desktop\project
 pip install -r requirements.txt
 ```
 
-2. **Start Kafka:**
+### Step 2: Run the Application
+
+**Option A: Using the startup script (Windows)**
 ```bash
-# Using Docker
-docker run -p 9092:9092 -e KAFKA_ADVERTISED_HOST_NAME=localhost -e KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 confluentinc/cp-kafka
-
-# Or start local Kafka cluster
+start_backend.bat
 ```
 
-3. **Start MongoDB:**
+**Option B: Using Python directly**
 ```bash
-docker run -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=password mongo
+python main.py
 ```
 
-4. **Run the components (in separate terminals):**
+### Step 3: Open the Dashboard
 
-```bash
-# Terminal 1: Train ML Model
-cd ml_model
-python train_model.py
-
-# Terminal 2: Start Kafka Producer
-cd producer
-python kafka_producer.py
-
-# Terminal 3: Start Spark Processing
-cd spark_processing
-python spark_processor.py
-
-# Terminal 4: Start Backend API
-cd backend_api
-python app.py
-
-# Terminal 5: Start Frontend (or open in browser)
-# Open frontend_dashboard/index.html in browser
+**Recommended: Use a local server**
+```
+bash
+cd frontend_dashboard
+python -m http.server 8080
 ```
 
-## API Endpoints
+Then open: http://localhost:8080/index.html
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/transactions` | Get all transactions |
-| GET | `/api/transactions/<id>` | Get transaction by ID |
-| GET | `/api/alerts` | Get fraud alerts |
-| GET | `/api/stats` | Get transaction statistics |
-| POST | `/api/transactions` | Add new transaction |
+## 📊 API Endpoints
 
-## Features
+### Standard Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Health check |
+| `/api/` | GET | API information |
+| `/api/health` | GET | Health status |
+| `/api/transactions` | GET | Get transactions |
+| `/api/recent-transactions` | GET | Recent transactions |
+| `/api/alerts` | GET | Fraud alerts |
+| `/api/stats` | GET | Statistics |
+| `/api/start-stream` | POST | Start stream |
+| `/api/stop-stream` | POST | Stop stream |
 
-- **Real-time Transaction Processing**: Streams transactions through Kafka
-- **Fraud Detection**: ML-based classification using Logistic Regression
-- **Live Dashboard**: Real-time updates of transactions and alerts
-- **RESTful API**: Clean API for data access
-- **MongoDB Storage**: Flexible document storage for transactions
+### OTP Verification
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/send-otp` | POST | Send OTP |
+| `/api/verify-otp` | POST | Verify OTP |
+| `/api/verification-status` | GET | Verification status |
 
-## Sample Transaction Data
+### Call Fraud Detection
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/attempt-call` | POST | Attempt call with OTP |
+| `/api/verify-call-otp` | POST | Verify call OTP |
+| `/api/suspicious-activities` | GET | Suspicious activities |
 
-```json
-{
-  "transaction_id": "TXN123456",
-  "user_id": "USER001",
-  "amount": 150.00,
-  "location": "New York, USA",
-  "timestamp": "2024-01-15T10:30:00",
-  "merchant": "Amazon",
-  "card_present": true
-}
+### Admin
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/stats` | GET | Admin stats |
+| `/api/admin/all-activities` | GET | All activities |
+
+## 🔐 OTP Verification System
+
+When a user attempts to dial another number:
+1. System sends OTP to user's registered mobile number
+2. User must verify OTP before call is allowed
+3. Verified users are stored in the database
+
+## 🚨 Fraud / Suspicious Activity Alert
+
+The system detects suspicious behavior:
+- Repeated calls to unknown numbers (5+ times in an hour)
+- Unusual calling patterns (calling many different numbers)
+- High amount transactions ($5000+)
+
+Alert Actions:
+- ✅ Send SMS alert to user
+- ✅ Send email notification to admin
+
+## 👨‍💼 Admin Dashboard
+
+Shows all suspicious activities:
+- User number
+- Suspicious action
+- Time of activity
+- Alert status
+
+## 🛠️ Troubleshooting
+
+### Dashboard shows "Disconnected"
+1. Make sure backend is running: `python main.py`
+2. The dashboard will automatically reconnect
+3. If not, refresh the browser page
+
+### Port 5000 already in use
+```
+bash
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
 ```
 
-## Configuration
+## 📝 License
 
-Edit `config.py` to modify:
-- Kafka broker address
-- MongoDB connection
-- Spark configurations
-- API port
-
-## License
-
-MIT License
-
-=======
-This project detects fraudulent bank transactions in real-time using Apache Kafka, Apache Spark, and Machine Learning.
-
-## Technologies Used
-- Python
-- Apache Kafka
-- Apache Spark
-- Scikit-learn
-- Flask
-- HTML/CSS/JavaScript
-
-## Features
-- Real-time transaction streaming
-- Fraud detection using ML
-- Dashboard visualization# real-time-fraud-detection
-Real-Time Fraud Detection using Kafka, Spark and Python
-5162fc48f91153024a264c46a88a457177a0bdd7
+This project is for educational purposes.

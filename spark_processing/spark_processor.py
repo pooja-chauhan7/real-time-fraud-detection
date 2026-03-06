@@ -10,7 +10,7 @@ import json
 import logging
 from datetime import datetime
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col, to_json, struct
+from pyspark.sql.functions import from_json, col, to_json, struct, when
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, BooleanType
 import config
 

@@ -1,6 +1,6 @@
 /**
- * Fraud Detection Dashboard - JavaScript
- * Enhanced Version with Bank Statement Analyzer, Risk Scoring, and Analytics
+ * Fraud Detection Dashboard - Fixed Version
+ * Enhanced with stable real-time streaming
  */
 
 const API_BASE_URL = 'http://localhost:5000';
@@ -62,12 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCurrentUser();
     setupAutoRefresh();
     startLiveStream();
-    connectionCheckInterval = setInterval(checkConnection, 10000);
 });
 
 // Initialize Charts
 function initCharts() {
-    // Wait for Chart.js to load
     const checkChart = setInterval(() => {
         if (typeof Chart !== 'undefined') {
             clearInterval(checkChart);
@@ -75,14 +73,12 @@ function initCharts() {
         }
     }, 100);
     
-    // Timeout after 5 seconds
     setTimeout(() => clearInterval(checkChart), 5000);
 }
 
 function initializeCharts() {
     if (chartsInitialized) return;
     
-    // Transaction Type Doughnut Chart
     const typeCtx = document.getElementById('type-chart');
     if (typeCtx) {
         window.typeChart = new Chart(typeCtx, {
@@ -98,15 +94,12 @@ function initializeCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
+                plugins: { legend: { position: 'bottom' } },
                 cutout: '60%'
             }
         });
     }
     
-    // Daily Trend Line Chart
     const dailyCtx = document.getElementById('daily-chart');
     if (dailyCtx) {
         const days = [];
@@ -147,12 +140,8 @@ function initializeCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true } }
             }
         });
     }
@@ -168,17 +157,14 @@ function initTabs() {
         btn.addEventListener('click', () => {
             const tabId = btn.dataset.tab;
             
-            // Update button states
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             document.getElementById(tabId).classList.add('active');
             
-            // Load data for specific tabs
             if (tabId === 'analytics') {
                 loadAnalytics();
             }
@@ -238,11 +224,10 @@ async function uploadFile(file) {
         
         if (data.success) {
             displayUploadResults(data.results);
-            // Refresh dashboard data after upload
             loadDashboardData();
         } else {
             alert(data.error || 'Upload failed');
-            initUpload(); // Reset upload area
+            initUpload();
         }
     } catch (error) {
         console.error('Upload error:', error);
@@ -265,7 +250,6 @@ function displayUploadResults(results) {
     if (resultAmount) resultAmount.textContent = `₹${results.total_amount.toLocaleString()}`;
     if (resultSuspicious) resultSuspicious.textContent = results.suspicious_transactions;
     
-    // Display transactions
     const container = document.getElementById('result-transactions');
     if (container && results.transactions) {
         container.innerHTML = results.transactions.map(txn => `
@@ -277,7 +261,6 @@ function displayUploadResults(results) {
         `).join('');
     }
     
-    // Reset upload area
     const uploadArea = document.getElementById('upload-area');
     if (uploadArea) {
         uploadArea.innerHTML = `
@@ -325,7 +308,6 @@ function initAnalyzeForm() {
             
             if (data.success) {
                 displayAnalysisResult(data.transaction, data.analysis);
-                // Refresh dashboard after analysis
                 loadDashboardData();
             } else {
                 alert(data.error || 'Analysis failed');
@@ -382,14 +364,12 @@ async function loadAnalytics() {
 }
 
 function updateChartsWithData(analytics) {
-    // Update transaction type chart
     if (window.typeChart && analytics.by_type && analytics.by_type.length > 0) {
         window.typeChart.data.labels = analytics.by_type.map(t => t.type);
         window.typeChart.data.datasets[0].data = analytics.by_type.map(t => t.count);
         window.typeChart.update();
     }
     
-    // Update daily trend chart
     if (window.dailyChart && analytics.daily && analytics.daily.length > 0) {
         window.dailyChart.data.labels = analytics.daily.map(d => d.date);
         window.dailyChart.data.datasets[0].data = analytics.daily.map(d => d.total_transactions);
@@ -399,7 +379,6 @@ function updateChartsWithData(analytics) {
 }
 
 function displayAnalytics(analytics) {
-    // Activity log
     const activityLog = document.getElementById('activity-log');
     if (activityLog && analytics.recent_activity) {
         activityLog.innerHTML = analytics.recent_activity.map(a => `
@@ -424,7 +403,6 @@ async function checkConnection() {
         if (response.ok) {
             updateConnectionStatus(true);
             connectionRetryCount = 0;
-            checkStreamStatus();
         } else {
             updateConnectionStatus(false);
             handleDisconnection();
@@ -440,21 +418,10 @@ function handleDisconnection() {
     connectionRetryCount++;
     if (connectionRetryCount <= MAX_RETRY_ATTEMPTS) {
         elements.connectionStatus.textContent = `Reconnecting (${connectionRetryCount})...`;
-        const delay = Math.min(1000 * Math.pow(2, connectionRetryCount), 30000);
+        const delay = Math.min(1000 * Math.pow(2, Math.min(connectionRetryCount, 5)), 30000);
         setTimeout(checkConnection, delay);
     } else {
         elements.connectionStatus.textContent = 'Disconnected - Start backend';
-    }
-}
-
-async function checkStreamStatus() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/stream-status`);
-        const data = await response.json();
-        if (data.success && !data.running) startLiveStream();
-        else if (data.success && data.running) streamStarted = true;
-    } catch (error) {
-        console.error('Error checking stream:', error);
     }
 }
 
@@ -656,13 +623,29 @@ async function verifyOTP() {
     }
 }
 
-// Stream functions
+// Stream functions - Fixed version
 async function startLiveStream() {
     if (streamStarted) return;
+    
     try {
+        // First check if stream is already running
+        const statusResponse = await fetch(`${API_BASE_URL}/api/stream-status`);
+        const statusData = await statusResponse.json();
+        
+        if (statusData.success && statusData.running) {
+            streamStarted = true;
+            console.log('Stream already running');
+            return;
+        }
+        
+        // If not running, start it
         const response = await fetch(`${API_BASE_URL}/api/start-stream`, { method: 'POST' });
         const data = await response.json();
-        if (data.success) streamStarted = true;
+        
+        if (data.success) {
+            streamStarted = true;
+            console.log('Stream started successfully');
+        }
     } catch (error) {
         console.error('Error starting stream:', error);
     }
@@ -690,7 +673,6 @@ async function loadStats() {
             if (elements.fraudPercentage) elements.fraudPercentage.textContent = `${stats.fraud_percentage}%`;
             if (elements.activeAlerts) elements.activeAlerts.textContent = stats.new_alerts;
             
-            // Risk distribution
             const riskDist = stats.risk_distribution || {};
             const riskHigh = document.getElementById('risk-high');
             const riskMedium = document.getElementById('risk-medium');
@@ -828,6 +810,6 @@ window.addEventListener('error', (e) => {
     console.error('Global error:', e.error);
 });
 
-// Make API_BASE_URL available globally for charts.js
+// Make API_BASE_URL available globally
 window.API_BASE_URL = API_BASE_URL;
 

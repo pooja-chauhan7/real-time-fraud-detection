@@ -35,7 +35,10 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+# Global state for stream management
 running = False
+stream_thread = None
+
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fraud_detection.db')
 ALLOWED_EXTENSIONS = {'csv'}
 
@@ -177,6 +180,17 @@ def check_duplicate_transactions(user_id, amount, time_window_minutes=5):
     return result['count'] if result else 0
 
 
+def log_activity(user_id, activity_type, description):
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('''INSERT INTO activity_logs (user_id, activity_type, description) VALUES (?, ?, ?)''',
+            (user_id, activity_type, description))
+        db.commit()
+    except:
+        pass
+
+
 def create_app():
     app = Flask(__name__)
     app.secret_key = 'fraud-detection-secret-key-2024'
@@ -206,14 +220,19 @@ def register_routes(app):
         return jsonify({'status': 'running', 'service': 'Fraud Detection API', 'version': '5.0.0', 'timestamp': datetime.now().isoformat(),
             'endpoints': {'health': '/api/health', 'auth': '/api/register, /api/login',
                 'transactions': '/api/transactions, /api/analyze', 'upload': '/api/upload-statement',
-                'stats': '/api/stats', 'alerts': '/api/alerts', 'analytics': '/api/analytics'}})
+                'stats': '/api/stats', 'alerts': '/api/alerts', 'analytics': '/api/analytics',
+                'stream': '/api/stream-status, /api/start-stream, /api/stop-stream',
+                'verification': '/api/send-otp, /api/verify-otp, /api/current-user'}})
     
     @app.route('/api/health', methods=['GET'])
     def health_check():
+        global running
         return jsonify({'status': 'healthy', 'service': 'Fraud Detection API',
             'ml_model': 'loaded' if app.config['fraud_detector'].initialized else 'rule-based',
+            'stream_running': running,
             'transactions_count': len(app.config['transactions']),
-            'alerts_count': len(app.config['alerts']), 'timestamp': datetime.now().isoformat()})
+            'alerts_count': len(app.config['alerts']), 
+            'timestamp': datetime.now().isoformat()})
     
     # AUTHENTICATION
     @app.route('/api/register', methods=['POST'])
@@ -285,7 +304,7 @@ def register_routes(app):
     @app.route('/api/current-user', methods=['GET'])
     def current_user():
         if 'user_id' not in session:
-            return jsonify({'success': False, 'logged_in': False}), 401
+            return jsonify({'success': True, 'logged_in': False, 'is_verified': False})
         
         user_id = session.get('user_id')
         username = session.get('username')
@@ -339,7 +358,7 @@ def register_routes(app):
         simulate_send_sms(mobile_number, message)
         logger.info(f"OTP sent to {mobile_number}: {otp_code}")
         
-        return jsonify({'success': True, 'message': 'OTP sent successfully', 'expires_in': 60})
+        return jsonify({'success': True, 'message': 'OTP sent successfully', 'expires_in': 60, 'otp_code': otp_code})
     
     @app.route('/api/verify-otp', methods=['POST'])
     def verify_otp():
@@ -683,9 +702,10 @@ def register_routes(app):
     # REAL-TIME STREAM
     @app.route('/api/start-stream', methods=['POST'])
     def start_stream():
-        global running
+        global running, stream_thread
+        
         if running:
-            return jsonify({'success': False, 'message': 'Stream already running'})
+            return jsonify({'success': True, 'message': 'Stream already running', 'running': True})
         
         running = True
         
@@ -747,33 +767,22 @@ def register_routes(app):
                         logger.error(f"Error generating transaction: {e}")
                         time.sleep(1)
         
-        thread = threading.Thread(target=generate_transactions_thread, args=(app,))
-        thread.daemon = True
-        thread.start()
+        stream_thread = threading.Thread(target=generate_transactions_thread, args=(app,))
+        stream_thread.daemon = True
+        stream_thread.start()
         
-        return jsonify({'success': True, 'message': 'Transaction stream started'})
+        return jsonify({'success': True, 'message': 'Transaction stream started', 'running': True})
     
     @app.route('/api/stop-stream', methods=['POST'])
     def stop_stream():
         global running
         running = False
-        return jsonify({'success': True, 'message': 'Transaction stream stopped'})
+        return jsonify({'success': True, 'message': 'Transaction stream stopped', 'running': False})
     
     @app.route('/api/stream-status', methods=['GET'])
     def stream_status():
         global running
         return jsonify({'success': True, 'running': running})
-
-
-def log_activity(user_id, activity_type, description):
-    try:
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute('''INSERT INTO activity_logs (user_id, activity_type, description) VALUES (?, ?, ?)''',
-            (user_id, activity_type, description))
-        db.commit()
-    except:
-        pass
 
 
 def main():
@@ -785,5 +794,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

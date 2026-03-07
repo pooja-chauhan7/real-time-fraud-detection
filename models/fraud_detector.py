@@ -26,29 +26,16 @@ class FraudDetector:
     """
     
     def __init__(self, model_path: str = None):
-        """
-        Initialize the fraud detector.
-        
-        Args:
-            model_path: Path to the trained model file (optional)
-        """
         self.model = None
         self.scaler = None
         self.model_path = model_path
         self.initialized = False
         self.feature_columns = ['amount', 'card_present', 'hour_of_day', 'day_of_week']
         
-        # Try to load model if path provided
         if model_path and os.path.exists(model_path):
             self.load_model(model_path)
     
     def load_model(self, model_path: str):
-        """
-        Load a pre-trained fraud detection model.
-        
-        Args:
-            model_path: Path to the model file
-        """
         try:
             with open(model_path, 'rb') as f:
                 model_data = pickle.load(f)
@@ -60,30 +47,18 @@ class FraudDetector:
             
             self.initialized = True
             logger.info(f"ML Model loaded successfully from {model_path}")
-            logger.info(f"Model trained at: {self.trained_at}")
-            logger.info(f"Feature columns: {self.feature_columns}")
             
         except Exception as e:
             logger.warning(f"Failed to load ML model: {e}. Using rule-based detection.")
             self.initialized = False
     
     def _extract_features(self, transaction: Dict) -> np.ndarray:
-        """
-        Extract features from transaction data.
-        
-        Args:
-            transaction: Transaction dictionary
-            
-        Returns:
-            Feature vector as numpy array
-        """
-        # Parse timestamp to extract hour and day of week
         timestamp_str = transaction.get('timestamp', '')
         if timestamp_str:
             try:
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                 hour_of_day = dt.hour
-                day_of_week = dt.weekday() + 1  # Monday = 1
+                day_of_week = dt.weekday() + 1
             except:
                 hour_of_day = datetime.now().hour
                 day_of_week = datetime.now().weekday() + 1
@@ -91,7 +66,6 @@ class FraudDetector:
             hour_of_day = datetime.now().hour
             day_of_week = datetime.now().weekday() + 1
             
-        # Prepare feature vector
         features = [
             float(transaction.get('amount', 0)),
             1 if transaction.get('card_present', True) else 0,
@@ -102,59 +76,64 @@ class FraudDetector:
         return np.array(features).reshape(1, -1)
     
     def _rule_based_detection(self, transaction: Dict) -> Dict:
-        """
-        Rule-based fraud detection.
-        
-        Args:
-            transaction: Transaction dictionary
-            
-        Returns:
-            Dictionary with rule-based detection results
-        """
         is_fraud = False
         reasons = []
         fraud_probability = 0.0
         
         amount = transaction.get('amount', 0)
         card_present = transaction.get('card_present', True)
+        location_changed = transaction.get('location_changed', False)
         
-        # Rule 1: High amount check (> $5000)
-        if amount > 5000:
+        # Rule 1: High amount check (>= ₹50,000) - PRIMARY FRAUD INDICATOR
+        if amount >= 50000:
             is_fraud = True
-            reasons.append("High transaction amount (>$5000)")
-            fraud_probability = max(fraud_probability, 0.85)
+            reasons.append(f"High amount: ₹{amount:,.2f} (>= ₹50,000)")
+            fraud_probability = max(fraud_probability, 0.9)
         
-        # Rule 2: Card not present + high amount (> $1000)
-        if not card_present and amount > 1000:
+        # Rule 2: Very high amount (> ₹100,000) - CRITICAL
+        if amount > 100000:
             is_fraud = True
-            reasons.append("Card not present for high amount (>$1000)")
-            fraud_probability = max(fraud_probability, 0.75)
-        
-        # Rule 3: Very high amount (> $8000)
-        if amount > 8000:
-            is_fraud = True
-            reasons.append("Very high amount (>$8000)")
-            fraud_probability = max(fraud_probability, 0.95)
-        
-        # Rule 4: Extremely high amount (> $9500)
-        if amount > 9500:
-            is_fraud = True
-            reasons.append("Extremely high amount (>$9500)")
+            reasons.append(f"Critical amount: ₹{amount:,.2f} (>= ₹100,000)")
             fraud_probability = 0.98
         
-        # Rule 5: Unusual time (late night)
+        # Rule 3: Sudden location change - Major fraud indicator
+        if location_changed:
+            is_fraud = True
+            prev_loc = transaction.get('previous_location', 'Unknown')
+            curr_loc = transaction.get('location', 'Unknown')
+            reasons.append(f"Location changed suddenly: {prev_loc} -> {curr_loc}")
+            fraud_probability = max(fraud_probability, 0.8)
+        
+        # Rule 4: Card not present + high amount (>= ₹25,000)
+        if not card_present and amount >= 25000:
+            is_fraud = True
+            reasons.append(f"Card not present for high amount: ₹{amount:,.2f}")
+            fraud_probability = max(fraud_probability, 0.75)
+        
+        # Rule 5: Multiple rapid transactions - checked via transaction history
+        rapid_transactions = transaction.get('rapid_transactions', 0)
+        if rapid_transactions >= 3:
+            is_fraud = True
+            reasons.append(f"Multiple rapid transactions: {rapid_transactions} in few seconds")
+            fraud_probability = max(fraud_probability, 0.85)
+        
+        # Rule 6: Suspicious pattern detected from bank statement
+        suspicious_pattern = transaction.get('suspicious_pattern', False)
+        if suspicious_pattern:
+            is_fraud = True
+            reasons.append("Suspicious bank statement pattern detected")
+            fraud_probability = max(fraud_probability, 0.8)
+        
+        # Rule 7: Unusual time (late night) + high amount
         try:
             timestamp_str = transaction.get('timestamp', '')
-            if timestamp_str:
+            if timestamp_str and amount >= 25000:
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                 if dt.hour < 5 or dt.hour > 23:
-                    reasons.append("Transaction at unusual hour")
-                    fraud_probability = max(fraud_probability, 0.3)
+                    reasons.append("High-value transaction at unusual hour")
+                    fraud_probability = max(fraud_probability, 0.4)
         except:
             pass
-        
-        # Rule 6: Multiple rapid transactions from same user
-        # (This would require checking transaction history)
         
         return {
             'is_fraud': is_fraud,
@@ -164,45 +143,19 @@ class FraudDetector:
         }
     
     def predict(self, transaction: Dict) -> Dict:
-        """
-        Predict whether a transaction is fraudulent.
-        
-        Args:
-            transaction: Transaction dictionary containing:
-                - amount: Transaction amount
-                - card_present: Whether card was physically present
-                - timestamp: Transaction timestamp (ISO format)
-                
-        Returns:
-            Dictionary with prediction results:
-                - is_fraud: Boolean indicating fraud
-                - fraud_probability: Probability of fraud (0-1)
-                - confidence: Prediction confidence
-                - reasons: List of fraud indicators
-        """
-        # Start with rule-based detection
         rule_result = self._rule_based_detection(transaction)
         
-        # If ML model is available, combine with ML predictions
         if self.initialized and self.model is not None:
             try:
-                # Extract features
                 features = self._extract_features(transaction)
-                
-                # Scale features
                 features_scaled = self.scaler.transform(features)
                 
-                # Get ML prediction
                 ml_prediction = self.model.predict(features_scaled)[0]
                 ml_probability = self.model.predict_proba(features_scaled)[0]
                 
-                # Combine rule-based and ML results
                 ml_fraud_prob = float(ml_probability[1])
-                
-                # Use weighted average (60% ML, 40% rules)
                 combined_probability = (0.6 * ml_fraud_prob) + (0.4 * rule_result['fraud_probability'])
                 
-                # Determine final prediction
                 is_fraud = bool(ml_prediction) or combined_probability > 0.5
                 
                 result = {
@@ -219,13 +172,10 @@ class FraudDetector:
                 logger.error(f"ML prediction error: {e}. Using rule-based only.")
                 result = rule_result
         else:
-            # Use rule-based detection only
             result = rule_result
         
-        # Add risk level
         result['risk_level'] = self._calculate_risk_level(result['fraud_probability'])
         
-        # Log high-risk transactions
         if result['is_fraud']:
             logger.warning(
                 f"FRAUD DETECTED: {transaction.get('transaction_id', 'UNKNOWN')} - "
@@ -237,19 +187,8 @@ class FraudDetector:
         return result
     
     def analyze_transaction(self, transaction: Dict) -> Dict:
-        """
-        Perform comprehensive analysis on a transaction.
-        
-        Args:
-            transaction: Transaction dictionary
-            
-        Returns:
-            Dictionary with transaction details and fraud analysis
-        """
-        # Get prediction
         prediction = self.predict(transaction)
         
-        # Add transaction details
         analysis = {
             'transaction_id': transaction.get('transaction_id'),
             'user_id': transaction.get('user_id'),
@@ -263,15 +202,6 @@ class FraudDetector:
         return analysis
     
     def _calculate_risk_level(self, fraud_probability: float) -> str:
-        """
-        Calculate risk level based on fraud probability.
-        
-        Args:
-            fraud_probability: Probability of fraud (0-1)
-            
-        Returns:
-            Risk level: LOW, MEDIUM, HIGH, or CRITICAL
-        """
         if fraud_probability >= 0.8:
             return 'CRITICAL'
         elif fraud_probability >= 0.6:
@@ -282,38 +212,16 @@ class FraudDetector:
             return 'LOW'
     
     def batch_predict(self, transactions: List[Dict]) -> List[Dict]:
-        """
-        Predict fraud for a batch of transactions.
-        
-        Args:
-            transactions: List of transaction dictionaries
-            
-        Returns:
-            List of prediction results
-        """
         return [self.analyze_transaction(txn) for txn in transactions]
 
 
-# Factory function to create detector
 def create_fraud_detector(model_path: str = None) -> FraudDetector:
-    """
-    Create a fraud detector instance.
-    
-    Args:
-        model_path: Optional path to trained model
-        
-    Returns:
-        FraudDetector instance
-    """
     return FraudDetector(model_path=model_path)
 
 
-# Example usage
 if __name__ == "__main__":
-    # Test with sample transactions
     detector = FraudDetector()
     
-    # Test normal transaction
     normal_txn = {
         'transaction_id': 'TXN_TEST_001',
         'user_id': 'USER001',
@@ -333,18 +241,18 @@ if __name__ == "__main__":
     print(f"Is Fraud: {result['is_fraud']}")
     print(f"Fraud Probability: {result['fraud_probability']:.2%}")
     print(f"Risk Level: {result['risk_level']}")
-    print(f"Reasons: {result.get('reasons', [])}")
     print()
     
-    # Test suspicious transaction
     suspicious_txn = {
         'transaction_id': 'TXN_TEST_002',
         'user_id': 'USER002',
-        'amount': 9500.00,
-        'location': 'Unknown',
+        'amount': 75000.00,
+        'location': 'Tokyo, Japan',
         'merchant': 'Unknown',
         'card_present': False,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'location_changed': True,
+        'previous_location': 'New York, USA'
     }
     
     print("=" * 50)

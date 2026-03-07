@@ -20,12 +20,13 @@ KAFKA_PROCESSED_TOPIC = 'processed-transactions'
 KAFKA_ALERTS_TOPIC = 'fraud-alerts'
 
 # ==================== Transaction Generation ====================
-TRANSACTIONS_PER_SECOND = 3
-MAX_TRANSACTION_AMOUNT = 10000
+TRANSACTIONS_PER_SECOND = 2
+MAX_TRANSACTION_AMOUNT = 150000  # Increased for realistic fraud testing
 LOCATIONS = [
     "New York, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA",
     "Phoenix, USA", "London, UK", "Paris, France", "Berlin, Germany",
-    "Tokyo, Japan", "Sydney, Australia", "Toronto, Canada", "Mumbai, India"
+    "Tokyo, Japan", "Sydney, Australia", "Toronto, Canada", "Mumbai, India",
+    "Dubai, UAE", "Singapore", "Hong Kong", "Seoul, South Korea"
 ]
 
 MERCHANTS = [

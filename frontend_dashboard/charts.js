@@ -1,395 +1,359 @@
 /**
- * Charts Module for Fraud Detection Dashboard
- * Uses Chart.js for rendering analytics charts
+ * Professional Charts Module
+ * Real-time fraud detection dashboard charts
  */
 
-// Chart instances storage
-let chartInstances = {};
+// Global chart instances
+let fraudPieChart = null;
+let transactionLineChart = null;
+let volumeBarChart = null;
 
-// Chart color palette
-const chartColors = {
-    primary: '#4f46e5',
-    success: '#10b981',
-    warning: '#f59e0b',
-    danger: '#ef4444',
-    info: '#3b82f6',
-    gray: '#6b7280'
-};
-
-// Initialize charts when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Chart.js will be loaded dynamically in the analytics tab
-    loadChartJS();
-});
-
-function loadChartJS() {
-    // Check if Chart.js is already loaded
-    if (typeof Chart === 'undefined') {
-        // Load Chart.js from CDN
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-        script.onload = () => {
-            console.log('Chart.js loaded successfully');
-            initializeDefaultCharts();
-        };
-        script.onerror = () => {
-            console.error('Failed to load Chart.js');
-            // Fallback to CSS-based charts
-            initializeFallbackCharts();
-        };
-        document.head.appendChild(script);
-    } else {
-        initializeDefaultCharts();
-    }
+// Initialize all charts
+function initDashboardCharts() {
+    initFraudPieChart();
+    initTransactionLineChart();
+    initVolumeBarChart();
 }
 
-function initializeDefaultCharts() {
-    // Create empty chart canvases with default data
-    createTransactionTypeChart();
-    createDailyTrendChart();
-    createRiskDistributionChart();
-    createFraudAlertsChart();
-}
-
-function initializeFallbackCharts() {
-    console.log('Using fallback CSS-based charts');
-}
-
-/**
- * Create/Update Transaction Type Distribution Chart
- */
-function createTransactionTypeChart(data = null) {
-    const ctx = document.getElementById('type-chart');
+// Fraud vs Normal Transactions Pie Chart
+function initFraudPieChart() {
+    const ctx = document.getElementById('fraud-pie-chart');
     if (!ctx) return;
-
-    const chartData = data || {
-        'TRANSFER': 35,
-        'UPI': 28,
-        'CARD': 22,
-        'INTERNATIONAL': 10,
-        'CASH': 5
-    };
-
-    const labels = Object.keys(chartData);
-    const values = Object.values(chartData);
-    const colors = [
-        chartColors.primary,
-        chartColors.success,
-        chartColors.warning,
-        chartColors.danger,
-        chartColors.info
-    ];
-
-    if (chartInstances.typeChart) {
-        chartInstances.typeChart.destroy();
-    }
-
-    chartInstances.typeChart = new Chart(ctx, {
+    
+    fraudPieChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: labels,
+            labels: ['Normal Transactions', 'Fraud Detected'],
             datasets: [{
-                data: values,
-                backgroundColor: colors,
-                borderWidth: 0
+                data: [85, 15],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',  // Success green
+                    'rgba(239, 68, 68, 0.8)'    // Danger red
+                ],
+                borderColor: [
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(239, 68, 68, 1)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 10
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '65%',
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        padding: 15,
-                        usePointStyle: true
+                        color: '#94a3b8',
+                        padding: 20,
+                        font: {
+                            size: 12,
+                            family: "'Inter', sans-serif"
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#f1f5f9',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.raw / total) * 100).toFixed(1);
+                            return ` ${context.label}: ${context.raw} (${percentage}%)`;
+                        }
                     }
                 }
             },
-            cutout: '60%'
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
         }
     });
 }
 
-/**
- * Create/Update Daily Transaction Trend Chart
- */
-function createDailyTrendChart(data = null) {
-    const ctx = document.getElementById('daily-chart');
+// Transaction Trend Line Chart
+function initTransactionLineChart() {
+    const ctx = document.getElementById('transaction-line-chart');
     if (!ctx) return;
-
-    // Default data for last 7 days
-    const defaultData = {
-        labels: generateLast7Days(),
-        total: [45, 52, 38, 65, 48, 72, 55],
-        fraud: [3, 5, 2, 8, 4, 12, 6]
-    };
-
-    const chartData = data || defaultData;
-
-    if (chartInstances.dailyChart) {
-        chartInstances.dailyChart.destroy();
+    
+    // Generate last 12 hours of data
+    const hours = [];
+    const normalData = [];
+    const fraudData = [];
+    
+    for (let i = 11; i >= 0; i--) {
+        const hour = new Date();
+        hour.setHours(hour.getHours() - i);
+        hours.push(hour.getHours() + ':00');
+        normalData.push(Math.floor(Math.random() * 30) + 10);
+        fraudData.push(Math.floor(Math.random() * 5) + 1);
     }
-
-    chartInstances.dailyChart = new Chart(ctx, {
+    transactionLineChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: chartData.labels,
+            labels: hours,
             datasets: [
                 {
-                    label: 'Total Transactions',
-                    data: chartData.total,
-                    borderColor: chartColors.primary,
-                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    label: 'Normal Transactions',
+                    data: normalData,
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                    pointBorderColor: '#1e293b',
+                    pointBorderWidth: 2
                 },
                 {
-                    label: 'Fraudulent',
-                    data: chartData.fraud,
-                    borderColor: chartColors.danger,
+                    label: 'Fraud Detected',
+                    data: fraudData,
+                    borderColor: 'rgba(239, 68, 68, 1)',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 3,
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+                    pointBorderColor: '#1e293b',
+                    pointBorderWidth: 2
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        padding: 15,
-                        usePointStyle: true
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: '#94a3b8',
+                        padding: 20,
+                        font: {
+                            size: 12,
+                            family: "'Inter', sans-serif"
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
                 },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#f1f5f9',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    borderWidth: 1,
+                    padding: 12
+                }
+            },
+            scales: {
                 x: {
                     grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
-/**
- * Create/Update Risk Distribution Chart
- */
-function createRiskDistributionChart(data = null) {
-    const containerId = 'risk-chart';
-    let container = document.getElementById(containerId);
-
-    if (!container) {
-        // Create container if it doesn't exist
-        const riskSummary = document.querySelector('.risk-summary');
-        if (riskSummary) {
-            const chartContainer = document.createElement('div');
-            chartContainer.id = containerId;
-            chartContainer.style.cssText = 'width: 100%; height: 200px; margin-top: 20px;';
-            riskSummary.appendChild(chartContainer);
-            container = chartContainer;
-        }
-    }
-
-    if (!container) return;
-
-    const chartData = data || {
-        LOW: 65,
-        MEDIUM: 25,
-        HIGH: 10
-    };
-
-    const labels = Object.keys(chartData);
-    const values = Object.values(chartData);
-    const colors = [
-        chartColors.success,
-        chartColors.warning,
-        chartColors.danger
-    ];
-
-    if (chartInstances.riskChart) {
-        chartInstances.riskChart.destroy();
-    }
-
-    chartInstances.riskChart = new Chart(container, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Risk Distribution',
-                data: values,
-                backgroundColor: colors,
-                borderRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
                     ticks: {
-                        callback: function(value) {
-                            return value + '%';
+                        color: '#94a3b8',
+                        font: {
+                            size: 11
                         }
                     }
-                }
-            }
-        }
-    });
-}
-
-/**
- * Create/Update Fraud Alerts Chart
- */
-function createFraudAlertsChart() {
-    const containerId = 'alerts-chart';
-    let container = document.getElementById(containerId);
-
-    if (!container) {
-        const alertsPanel = document.querySelector('.alerts-panel .panel-content');
-        if (alertsPanel) {
-            const chartContainer = document.createElement('div');
-            chartContainer.id = containerId;
-            chartContainer.style.cssText = 'width: 100%; height: 200px;';
-            chartContainer.style.marginBottom = '20px';
-            alertsPanel.insertBefore(chartContainer, alertsPanel.firstChild);
-            container = chartContainer;
-        }
-    }
-
-    if (!container) return;
-
-    // Default data
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const data = [3, 5, 2, 8, 4, 6, 3];
-
-    if (chartInstances.alertsChart) {
-        chartInstances.alertsChart.destroy();
-    }
-
-    chartInstances.alertsChart = new Chart(container, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Fraud Alerts',
-                data: data,
-                backgroundColor: chartColors.danger,
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
+                },
                 y: {
                     beginAtZero: true,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
                     ticks: {
-                        stepSize: 1
+                        color: '#94a3b8',
+                        font: {
+                            size: 11
+                        },
+                        stepSize: 10
                     }
                 }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
             }
         }
     });
 }
 
-/**
- * Update all charts with fresh data from API
- */
-async function updateChartsWithData() {
-    try {
-        const response = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/analytics`);
-        const data = await response.json();
-
-        if (data.success && data.analytics) {
-            const analytics = data.analytics;
-
-            // Update transaction type chart
-            if (analytics.by_type && analytics.by_type.length > 0) {
-                const typeData = {};
-                analytics.by_type.forEach(item => {
-                    typeData[item.type] = item.count;
-                });
-                createTransactionTypeChart(typeData);
-            }
-
-            // Update daily trend chart
-            if (analytics.daily && analytics.daily.length > 0) {
-                const dailyData = {
-                    labels: analytics.daily.map(d => d.date),
-                    total: analytics.daily.map(d => d.total_transactions),
-                    fraud: analytics.daily.map(d => d.fraud_transactions)
-                };
-                createDailyTrendChart(dailyData);
-            }
-        }
-
-        // Also update stats
-        const statsResponse = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/stats`);
-        const statsData = await statsResponse.json();
-
-        if (statsData.success && statsData.stats.risk_distribution) {
-            createRiskDistributionChart(statsData.stats.risk_distribution);
-        }
-
-    } catch (error) {
-        console.error('Error updating charts:', error);
-    }
-}
-
-/**
- * Generate last 7 days labels
- */
-function generateLast7Days() {
+// Transaction Volume Bar Chart
+function initVolumeBarChart() {
+    const ctx = document.getElementById('volume-bar-chart');
+    if (!ctx) return;
+    
+    // Generate weekly data
     const days = [];
+    const amounts = [];
+    
     for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         days.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+        amounts.push(Math.floor(Math.random() * 500000) + 100000);
     }
-    return days;
+    
+    volumeBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Transaction Volume (₹)',
+                data: amounts,
+                backgroundColor: (context) => {
+                    const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
+                    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.4)');
+                    return gradient;
+                },
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1,
+                borderRadius: 8,
+                hoverBackgroundColor: 'rgba(59, 130, 246, 1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#f1f5f9',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return ' ₹' + context.raw.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: {
+                            size: 11
+                        },
+                        callback: function(value) {
+                            return '₹' + (value / 1000).toFixed(0) + 'K';
+                        }
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
 }
 
-/**
- * Format number with locale
- */
-function formatNumber(num) {
-    return new Intl.NumberFormat('en-US').format(num);
-}
-
-/**
- * Export chart as image
- */
-function exportChart(chartId) {
-    const chart = chartInstances[chartId];
-    if (chart) {
-        const link = document.createElement('a');
-        link.download = `chart-${chartId}-${Date.now()}.png`;
-        link.href = chart.toBase64Image();
-        link.click();
+// Update charts with real data
+function updateChartsWithData(stats, analytics) {
+    // Update pie chart
+    if (fraudPieChart) {
+        fraudPieChart.data.datasets[0].data = [
+            stats.normal_transactions || 0,
+            stats.fraud_transactions || 0
+        ];
+        fraudPieChart.update('none');
+    }
+    
+    // Update line chart with new data
+    if (transactionLineChart && analytics && analytics.daily) {
+        const labels = analytics.daily.map(d => d.date);
+        const normalData = analytics.daily.map(d => d.total_transactions - d.fraud_transactions);
+        const fraudData = analytics.daily.map(d => d.fraud_transactions);
+        
+        transactionLineChart.data.labels = labels;
+        transactionLineChart.data.datasets[0].data = normalData;
+        transactionLineChart.data.datasets[1].data = fraudData;
+        transactionLineChart.update('none');
     }
 }
+
+// Add new data point to line chart
+function addDataPoint(normalCount, fraudCount) {
+    if (!transactionLineChart) return;
+    
+    const now = new Date();
+    const label = now.getHours() + ':00';
+    
+    // Add new label
+    transactionLineChart.data.labels.push(label);
+    if (transactionLineChart.data.labels.length > 12) {
+        transactionLineChart.data.labels.shift();
+    }
+    
+    // Add new data points
+    transactionLineChart.data.datasets[0].data.push(normalCount);
+    if (transactionLineChart.data.datasets[0].data.length > 12) {
+        transactionLineChart.data.datasets[0].data.shift();
+    }
+    
+    transactionLineChart.data.datasets[1].data.push(fraudCount);
+    if (transactionLineChart.data.datasets[1].data.length > 12) {
+        transactionLineChart.data.datasets[1].data.shift();
+    }
+    
+    transactionLineChart.update('none');
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboardCharts);
+} else {
+    initDashboardCharts();
+}
+
+// Export functions for global use
+window.initDashboardCharts = initDashboardCharts;
+window.updateChartsWithData = updateChartsWithData;
+window.addDataPoint = addDataPoint;
 

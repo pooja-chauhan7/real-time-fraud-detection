@@ -1,16 +1,18 @@
 /**
- * Fraud Detection Dashboard - Fixed Version
- * Enhanced with stable real-time streaming
+ * Fraud Detection Dashboard - Professional Version
+ * Fixed: No more refresh glitches, proper stream management, real-time updates
  */
 
 const API_BASE_URL = 'http://localhost:5000';
 let autoRefreshEnabled = true;
-let refreshInterval = 3000;
+let refreshInterval = 5000; // Reduced refresh to avoid overload
 let streamStarted = false;
 let connectionRetryCount = 0;
 const MAX_RETRY_ATTEMPTS = 10;
-let connectionCheckInterval = null;
+let lastTransactionCount = 0;
+let lastAlertCount = 0;
 let chartsInitialized = false;
+let liveUpdateInterval = null;
 
 // User state
 let currentUser = {
@@ -53,7 +55,7 @@ const elements = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Dashboard initializing...');
+    console.log('Professional Fraud Dashboard initializing...');
     initTabs();
     initUpload();
     initAnalyzeForm();
@@ -62,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCurrentUser();
     setupAutoRefresh();
     startLiveStream();
+    startLiveUpdates();
 });
 
 // Initialize Charts
@@ -84,51 +87,53 @@ function initializeCharts() {
         window.typeChart = new Chart(typeCtx, {
             type: 'doughnut',
             data: {
-                labels: ['TRANSFER', 'UPI', 'CARD', 'INTERNATIONAL', 'CASH'],
+                labels: ['Normal', 'Fraud'],
                 datasets: [{
-                    data: [30, 25, 25, 15, 5],
-                    backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'],
+                    data: [80, 20],
+                    backgroundColor: ['#10b981', '#ef4444'],
                     borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } },
-                cutout: '60%'
+                plugins: { 
+                    legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                },
+                cutout: '70%'
             }
         });
     }
     
     const dailyCtx = document.getElementById('daily-chart');
     if (dailyCtx) {
-        const days = [];
+        const hours = [];
         const totals = [];
         const frauds = [];
         
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            days.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
-            totals.push(Math.floor(Math.random() * 50) + 20);
-            frauds.push(Math.floor(Math.random() * 10) + 1);
+        for (let i = 11; i >= 0; i--) {
+            const hour = new Date();
+            hour.setHours(hour.getHours() - i);
+            hours.push(hour.getHours() + ':00');
+            totals.push(Math.floor(Math.random() * 30) + 10);
+            frauds.push(Math.floor(Math.random() * 5) + 1);
         }
         
         window.dailyChart = new Chart(dailyCtx, {
             type: 'line',
             data: {
-                labels: days,
+                labels: hours,
                 datasets: [
                     {
-                        label: 'Total Transactions',
+                        label: 'Normal Transactions',
                         data: totals,
-                        borderColor: '#4f46e5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         fill: true,
                         tension: 0.4
                     },
                     {
-                        label: 'Fraudulent',
+                        label: 'Fraud Detected',
                         data: frauds,
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -140,14 +145,26 @@ function initializeCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } },
-                scales: { y: { beginAtZero: true } }
+                plugins: { 
+                    legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
             }
         });
     }
     
     chartsInitialized = true;
-    console.log('Charts initialized');
+    console.log('Professional Charts initialized');
 }
 
 // Tab Navigation
@@ -365,16 +382,10 @@ async function loadAnalytics() {
 
 function updateChartsWithData(analytics) {
     if (window.typeChart && analytics.by_type && analytics.by_type.length > 0) {
-        window.typeChart.data.labels = analytics.by_type.map(t => t.type);
-        window.typeChart.data.datasets[0].data = analytics.by_type.map(t => t.count);
+        const normal = analytics.by_type.reduce((sum, t) => sum + (t.count || 0), 0);
+        const fraud = analytics.suspicious ? analytics.suspicious.length : 0;
+        window.typeChart.data.datasets[0].data = [normal - fraud, fraud];
         window.typeChart.update();
-    }
-    
-    if (window.dailyChart && analytics.daily && analytics.daily.length > 0) {
-        window.dailyChart.data.labels = analytics.daily.map(d => d.date);
-        window.dailyChart.data.datasets[0].data = analytics.daily.map(d => d.total_transactions);
-        window.dailyChart.data.datasets[1].data = analytics.daily.map(d => d.fraud_transactions);
-        window.dailyChart.update();
     }
 }
 
@@ -391,7 +402,7 @@ function displayAnalytics(analytics) {
     }
 }
 
-// Connection Management
+// Connection Management - Fixed
 async function checkConnection() {
     try {
         const controller = new AbortController();
@@ -628,7 +639,6 @@ async function startLiveStream() {
     if (streamStarted) return;
     
     try {
-        // First check if stream is already running
         const statusResponse = await fetch(`${API_BASE_URL}/api/stream-status`);
         const statusData = await statusResponse.json();
         
@@ -638,7 +648,6 @@ async function startLiveStream() {
             return;
         }
         
-        // If not running, start it
         const response = await fetch(`${API_BASE_URL}/api/start-stream`, { method: 'POST' });
         const data = await response.json();
         
@@ -648,6 +657,46 @@ async function startLiveStream() {
         }
     } catch (error) {
         console.error('Error starting stream:', error);
+    }
+}
+
+// Live Updates - Polling based real-time updates
+function startLiveUpdates() {
+    if (liveUpdateInterval) return;
+    
+    liveUpdateInterval = setInterval(() => {
+        if (autoRefreshEnabled) {
+            checkForNewData();
+        }
+    }, refreshInterval);
+}
+
+async function checkForNewData() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/stats`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.stats;
+            
+            // Only update if there are changes
+            if (stats.total_transactions !== lastTransactionCount || stats.new_alerts !== lastAlertCount) {
+                lastTransactionCount = stats.total_transactions;
+                lastAlertCount = stats.new_alerts;
+                loadDashboardData();
+                
+                // Update charts
+                if (window.typeChart) {
+                    window.typeChart.data.datasets[0].data = [
+                        stats.normal_transactions || 0,
+                        stats.fraud_transactions || 0
+                    ];
+                    window.typeChart.update('none');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error checking for new data:', error);
     }
 }
 
@@ -776,10 +825,6 @@ function setupAutoRefresh() {
             autoRefreshEnabled = e.target.checked;
         });
     }
-    
-    setInterval(() => {
-        if (autoRefreshEnabled) loadDashboardData();
-    }, refreshInterval);
 }
 
 function formatTime(timestamp) {

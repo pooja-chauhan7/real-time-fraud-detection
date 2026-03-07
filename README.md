@@ -1,146 +1,176 @@
-# 🛡️ Real-Time Fraud Detection System
+# Real-Time Fraud Detection System
 
-A comprehensive real-time fraud detection system for bank transactions built with Python, Flask, Machine Learning, and includes OTP Verification, SMS/Email Alerts, and Call Fraud Detection.
+A professional-grade fraud detection dashboard for monitoring banking transactions in real-time. Built for a college competition with a modern fintech-style UI.
 
-## 📋 Project Overview
+## Features
 
-This project demonstrates a complete fraud detection pipeline:
-- **Transaction Generator** - Simulates real bank transactions
-- **ML Model** - Rule-based + ML hybrid for fraud detection
-- **Backend API** - Flask REST API with all features
-- **Frontend Dashboard** - Real-time monitoring with auto-reconnect
+### ✅ Fixed Issues
+1. **Dashboard Glitch Fixed** - No more refresh/restart loops
+2. **Stable Connection** - Proper connection status handling
+3. **Working Fraud Detection** - Triggers on:
+   - Transaction amount ≥ ₹50,000
+   - Sudden location changes
+   - Multiple rapid transactions
+   - Suspicious bank statement patterns
+4. **Professional UI** - Dark blue banking theme with glassmorphism
+5. **Real-Time Updates** - Live transaction and alert monitoring
 
-## 🎯 Features
+### Dashboard Features
+- **Top Stats Cards**: Total Transactions, Fraudulent Transactions, Fraud Alerts, Fraud Rate
+- **Charts**: Fraud vs Normal Transactions (Pie), Transaction Trends (Line), Volume (Bar)
+- **Transaction Table**: Real-time transactions with status badges
+- **Alerts Panel**: Live fraud alerts with risk levels
+- **OTP Verification**: Mobile verification for fraud alerts
+- **Bank Statement Upload**: CSV upload with fraud analysis
 
-### Backend
-- ✅ RESTful API with Flask
-- ✅ Machine Learning model for fraud detection (Rule-based + ML hybrid)
-- ✅ Real-time transaction processing
-- ✅ Fraud probability scoring
-- ✅ Transaction history and alerts
-- ✅ Auto-start live transaction stream
-- ✅ **OTP Verification System** - Verify mobile number before calls
-- ✅ **SMS Alerts** - Simulated SMS for fraud alerts
-- ✅ **Email Alerts** - SMTP email notifications for suspicious activity
-- ✅ **Call Fraud Detection** - Detect suspicious calling patterns
-- ✅ **Admin Dashboard** - View all suspicious activities
+## Quick Start
 
-### Frontend
-- ✅ Modern dark-themed dashboard
-- ✅ Live transaction feed (auto-refreshes every 3 seconds)
-- ✅ Fraud alerts panel with notifications
-- ✅ Real-time statistics
-- ✅ **Auto-reconnect** - Automatically reconnects when backend restarts
-- ✅ **Auto-start stream** - Automatically starts transaction stream
+### Prerequisites
+- Python 3.8+
+- Web browser (Chrome/Firefox/Edge)
 
-## 🚀 Quick Start
+### Installation
 
-### Step 1: Install Dependencies
-
-```
-bash
-cd c:\Users\Pooja\Desktop\project
+1. **Install Python Dependencies**
+```bash
 pip install -r requirements.txt
 ```
 
-### Step 2: Run the Application
-
-**Option A: Using the startup script (Windows)**
+2. **Start the Backend API**
 ```bash
+# Option 1: Using Python directly
+python api/app.py
+
+# Option 2: Using the batch file (Windows)
 start_backend.bat
 ```
 
-**Option B: Using Python directly**
+3. **Open the Dashboard**
 ```bash
-python main.py
+# Open in browser
+frontend_dashboard/index.html
 ```
 
-### Step 3: Open the Dashboard
+Or simply open `frontend_dashboard/index.html` in your web browser.
 
-**Recommended: Use a local server**
+### Default API URL
+The dashboard connects to: `http://localhost:5000`
+
+If your backend runs on a different port, update `API_BASE_URL` in `frontend_dashboard/app.js`:
+```javascript
+const API_BASE_URL = 'http://localhost:5000';  // Change this if needed
 ```
-bash
-cd frontend_dashboard
-python -m http.server 8080
+
+## How to Test Fraud Detection
+
+### Method 1: Automatic Stream
+The system automatically generates transactions. Wait a few minutes and you'll see:
+- Normal transactions (₹1 - ₹5,000) - 50%
+- Medium transactions (₹5,000 - ₹50,000) - 30%
+- High-value transactions (₹50,000 - ₹150,000) - 20%
+
+Fraud will be detected on transactions ≥ ₹50,000!
+
+### Method 2: Manual Analysis
+1. Go to the "Analyze" tab
+2. Enter an amount ≥ 50000
+3. Click "Analyze Transaction"
+4. Watch it get flagged as FRAUD!
+
+### Method 3: Upload Bank Statement
+1. Go to "Upload Statement" tab
+2. Upload a CSV file with transactions
+3. Include amounts ≥ ₹50,000 to test fraud detection
+
+## Project Structure
+
+```
+project/
+├── api/
+│   └── app.py              # Flask backend API
+├── config.py               # Configuration settings
+├── frontend_dashboard/
+│   ├── index.html          # Main dashboard
+│   ├── app.js             # Frontend logic
+│   ├── styles.css         # Professional UI styles
+│   └── charts.js          # Chart visualizations
+├── models/
+│   └── fraud_detector.py  # ML + Rule-based fraud detection
+├── streaming/
+│   └── transaction_generator.py  # Transaction simulator
+├── database/
+│   ├── init_db.py         # Database initialization
+│   └── schema.sql         # Database schema
+└── requirements.txt       # Python dependencies
 ```
 
-Then open: http://localhost:8080/index.html
+## Database Tables (Already Created)
 
-## 📊 API Endpoints
+The system uses SQLite with these tables:
+- `users` - User accounts
+- `verified_users` - Mobile-verified users
+- `otp_store` - OTP verification codes
+- `transactions` - All transactions with fraud status
+- `alerts` - Fraud alerts
+- `bank_statements` - Uploaded statement analysis
+- `activity_logs` - Activity history
 
-### Standard Endpoints
+## API Endpoints
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Health check |
-| `/api/` | GET | API information |
-| `/api/health` | GET | Health status |
-| `/api/transactions` | GET | Get transactions |
-| `/api/recent-transactions` | GET | Recent transactions |
+| `/api/stats` | GET | Dashboard statistics |
+| `/api/transactions` | GET | Transaction list |
 | `/api/alerts` | GET | Fraud alerts |
-| `/api/stats` | GET | Statistics |
-| `/api/start-stream` | POST | Start stream |
-| `/api/stop-stream` | POST | Stop stream |
+| `/api/analyze` | POST | Analyze a transaction |
+| `/api/start-stream` | POST | Start transaction stream |
+| `/api/stop-stream` | POST | Stop transaction stream |
+| `/api/upload-statement` | POST | Upload bank statement CSV |
+| `/api/send-otp` | POST | Send OTP for verification |
+| `/api/verify-otp` | POST | Verify OTP code |
 
-### OTP Verification
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/send-otp` | POST | Send OTP |
-| `/api/verify-otp` | POST | Verify OTP |
-| `/api/verification-status` | GET | Verification status |
+## Professional UI Features
 
-### Call Fraud Detection
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/attempt-call` | POST | Attempt call with OTP |
-| `/api/verify-call-otp` | POST | Verify call OTP |
-| `/api/suspicious-activities` | GET | Suspicious activities |
+- **Dark Blue Banking Theme** - Modern fintech aesthetic
+- **Glassmorphism Effects** - Frosted glass card design
+- **Smooth Animations** - Hover effects and transitions
+- **Responsive Design** - Works on all screen sizes
+- **Real-Time Updates** - Live data without page refresh
+- **Professional Typography** - Inter font family
 
-### Admin
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/admin/stats` | GET | Admin stats |
-| `/api/admin/all-activities` | GET | All activities |
+## Troubleshooting
 
-## 🔐 OTP Verification System
+### Backend won't start
+```bash
+# Check if port 5000 is in use
+netstat -ano | findstr 5000
 
-When a user attempts to dial another number:
-1. System sends OTP to user's registered mobile number
-2. User must verify OTP before call is allowed
-3. Verified users are stored in the database
-
-## 🚨 Fraud / Suspicious Activity Alert
-
-The system detects suspicious behavior:
-- Repeated calls to unknown numbers (5+ times in an hour)
-- Unusual calling patterns (calling many different numbers)
-- High amount transactions ($5000+)
-
-Alert Actions:
-- ✅ Send SMS alert to user
-- ✅ Send email notification to admin
-
-## 👨‍💼 Admin Dashboard
-
-Shows all suspicious activities:
-- User number
-- Suspicious action
-- Time of activity
-- Alert status
-
-## 🛠️ Troubleshooting
-
-### Dashboard shows "Disconnected"
-1. Make sure backend is running: `python main.py`
-2. The dashboard will automatically reconnect
-3. If not, refresh the browser page
-
-### Port 5000 already in use
-```
-bash
-netstat -ano | findstr :5000
+# Kill process if needed
 taskkill /PID <PID> /F
 ```
 
-## 📝 License
+### Dashboard shows "Disconnected"
+1. Make sure the backend is running (`python api/app.py`)
+2. Check the API URL in app.js matches your port
+3. Check console for CORS errors
 
-This project is for educational purposes.
+### No fraud detected
+- Wait for the stream to generate high-value transactions (takes 1-2 minutes)
+- Use manual analysis with amount ≥ ₹50,000
+- Check browser console for transaction logs
+
+### Database errors
+- Delete `api/fraud_detection.db` to reset
+- Restart the backend to reinitialize
+
+## Competition Ready! 🎓
+
+This dashboard is now:
+- ✅ Professional and impressive UI
+- ✅ Working fraud detection
+- ✅ Real-time updates
+- ✅ Stable and bug-free
+- ✅ Easy to demonstrate
+
+Good luck with your college competition!
+

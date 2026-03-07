@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,167 +5,302 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fraud Detection Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🛡️ Fraud Detection Dashboard</h1>
-            <div class="header-actions">
-                <!-- Mobile Verification Section -->
-                <div class="verification-section" id="verification-section">
+            <div class="header-left">
+                <h1><i class="fas fa-shield-halved"></i> Fraud Detection System</h1>
+            </div>
+            <div class="header-right">
+                <div class="verification-section">
                     <span class="verified-badge" id="verified-badge" style="display: none;">
-                        ✓ Verified
+                        <i class="fas fa-check-circle"></i> Verified
                     </span>
                     <button class="btn-verify" id="btn-verify" onclick="showVerificationModal()">
-                        🔐 Verify Mobile
+                        <i class="fas fa-mobile-alt"></i> Verify Mobile
                     </button>
                 </div>
                 <div class="status-indicator">
                     <span class="status-dot"></span>
                     <span id="connection-status">Connecting...</span>
                 </div>
-            </div>
         </header>
         
         <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-icon">📊</div>
+                <div class="stat-icon"><i class="fas fa-exchange-alt"></i></div>
                 <div class="stat-content">
                     <h3>Total Transactions</h3>
                     <p class="stat-value" id="total-transactions">0</p>
                 </div>
-            </div>
             <div class="stat-card fraud">
-                <div class="stat-icon">⚠️</div>
+                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="stat-content">
-                    <h3>Fraud Transactions</h3>
+                    <h3>Suspicious</h3>
                     <p class="stat-value" id="fraud-transactions">0</p>
                 </div>
-            </div>
+            <div class="stat-card alerts">
+                <div class="stat-icon"><i class="fas fa-bell"></i></div>
+                <div class="stat-content">
+                    <h3>Fraud Alerts</h3>
+                    <p class="stat-value" id="active-alerts">0</p>
+                </div>
             <div class="stat-card percentage">
-                <div class="stat-icon">📈</div>
+                <div class="stat-icon"><i class="fas fa-percentage"></i></div>
                 <div class="stat-content">
                     <h3>Fraud Rate</h3>
                     <p class="stat-value" id="fraud-percentage">0%</p>
                 </div>
-            </div>
-            <div class="stat-card alerts">
-                <div class="stat-icon">🔔</div>
-                <div class="stat-content">
-                    <h3>Active Alerts</h3>
-                    <p class="stat-value" id="active-alerts">0</p>
-                </div>
-            </div>
         </div>
+
+        <!-- Risk Distribution -->
+        <div class="risk-summary">
+            <div class="risk-card high">
+                <span class="risk-label">High Risk</span>
+                <span class="risk-count" id="risk-high">0</span>
+            </div>
+            <div class="risk-card medium">
+                <span class="risk-label">Medium Risk</span>
+                <span class="risk-count" id="risk-medium">0</span>
+            </div>
+            <div class="risk-card low">
+                <span class="risk-label">Low Risk</span>
+                <span class="risk-count" id="risk-low">0</span>
+            </div>
         
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Transactions Panel -->
+        <!-- Main Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="transactions">
+                <i class="fas fa-list"></i> Transactions
+            </button>
+            <button class="tab-btn" data-tab="upload">
+                <i class="fas fa-upload"></i> Upload Statement
+            </button>
+            <button class="tab-btn" data-tab="analyze">
+                <i class="fas fa-search"></i> Analyze
+            </button>
+            <button class="tab-btn" data-tab="analytics">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </button>
+            <button class="tab-btn" data-tab="alerts">
+                <i class="fas fa-bell"></i> Alerts
+            </button>
+        </div>
+
+        <!-- Tab Content: Transactions -->
+        <div class="tab-content active" id="transactions">
             <div class="panel">
                 <div class="panel-header">
-                    <h2>Recent Transactions</h2>
+                    <h2><i class="fas fa-history"></i> Recent Transactions</h2>
                     <div class="panel-actions">
-                        <button class="btn-refresh" onclick="refreshTransactions()">🔄 Refresh</button>
+                        <button class="btn-refresh" onclick="refreshTransactions()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
                         <label class="toggle">
                             <input type="checkbox" id="auto-refresh" checked>
                             <span>Auto-refresh</span>
                         </label>
                     </div>
-                </div>
                 <div class="panel-content">
                     <table id="transactions-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>User</th>
                                 <th>Amount</th>
-                                <th>Location</th>
+                                <th>Type</th>
+                                <th>Receiver</th>
+                                <th>Risk Level</th>
                                 <th>Time</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="transactions-body">
                             <tr class="loading">
-                                <td colspan="6">Loading transactions...</td>
+                                <td colspan="7">Loading transactions...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
-            
-            <!-- Alerts Panel -->
+        </div>
+
+        <!-- Tab Content: Upload -->
+        <div class="tab-content" id="upload">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-file-invoice"></i> Bank Statement Analyzer</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="upload-section">
+                        <div class="upload-area" id="upload-area">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h3>Upload Bank Statement (CSV)</h3>
+                            <p>Drag and drop your CSV file here or click to browse</p>
+                            <input type="file" id="file-input" accept=".csv" style="display: none;">
+                            <button class="btn-primary" onclick="document.getElementById('file-input').click()">
+                                <i class="fas fa-folder-open"></i> Select File
+                            </button>
+                        </div>
+                        <div class="upload-info">
+                            <h4>CSV Format Requirements:</h4>
+                            <ul>
+                                <li>Date or Transaction Date</li>
+                                <li>Amount or Debit or Credit</li>
+                                <li>Type or Transaction Type</li>
+                                <li>Receiver or To</li>
+                                <li>Description or Narration</li>
+                            </ul>
+                        </div>
+                    <div id="upload-results" style="display: none;">
+                        <h3><i class="fas fa-chart-pie"></i> Analysis Results</h3>
+                        <div class="results-grid">
+                            <div class="result-card">
+                                <span class="result-label">Total Transactions</span>
+                                <span class="result-value" id="result-total">0</span>
+                            </div>
+                            <div class="result-card">
+                                <span class="result-label">Total Amount</span>
+                                <span class="result-value" id="result-amount">₹0</span>
+                            </div>
+                            <div class="result-card warning">
+                                <span class="result-label">Suspicious</span>
+                                <span class="result-value" id="result-suspicious">0</span>
+                            </div>
+                        <div id="result-transactions"></div>
+                </div>
+        </div>
+
+        <!-- Tab Content: Analyze -->
+        <div class="tab-content" id="analyze">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-search-dollar"></i> Transaction Analyzer</h2>
+                </div>
+                <div class="panel-content">
+                    <form id="analyze-form" class="analyze-form">
+                        <div class="form-group">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="analyze-amount" placeholder="Enter amount" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Transaction Type</label>
+                            <select id="analyze-type">
+                                <option value="TRANSFER">Transfer</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CARD">Card Payment</option>
+                                <option value="INTERNATIONAL">International</option>
+                                <option value="CASH">Cash Withdrawal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Receiver Account</label>
+                            <input type="text" id="analyze-receiver" placeholder="Account number">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" id="analyze-description" placeholder="Transaction description">
+                        </div>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-search"></i> Analyze Transaction
+                        </button>
+                    </form>
+                    <div id="analysis-result" style="display: none;">
+                        <div class="analysis-result" id="analysis-content"></div>
+                </div>
+        </div>
+
+        <!-- Tab Content: Analytics -->
+        <div class="tab-content" id="analytics">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-chart-line"></i> Dashboard Analytics</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <h3>Transactions by Type</h3>
+                            <div id="type-chart"></div>
+                        <div class="analytics-card">
+                            <h3>Daily Trend</h3>
+                            <div id="daily-chart"></div>
+                    </div>
+                    <div class="analytics-card full-width">
+                        <h3>Recent Activity Log</h3>
+                        <div id="activity-log"></div>
+                </div>
+        </div>
+
+        <!-- Tab Content: Alerts -->
+        <div class="tab-content" id="alerts">
             <div class="panel alerts-panel">
                 <div class="panel-header">
-                    <h2>🚨 Fraud Alerts</h2>
+                    <h2><i class="fas fa-exclamation-circle"></i> Fraud Alerts</h2>
                     <span class="badge" id="alert-count">0</span>
                 </div>
                 <div class="panel-content">
                     <div id="alerts-container">
                         <div class="no-alerts">No fraud alerts detected</div>
-                    </div>
                 </div>
-            </div>
         </div>
-    </div>
     
     <!-- Verification Modal -->
     <div class="modal" id="verification-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📱 Mobile Number Verification</h3>
+                <h3><i class="fas fa-mobile-alt"></i> Mobile Verification</h3>
                 <span class="modal-close" onclick="closeVerificationModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <!-- Step 1: Enter Mobile Number -->
+                <!-- Step 1: Enter Mobile -->
                 <div id="step-phone">
                     <p class="modal-description">
                         Enter your mobile number to receive fraud alerts via SMS.
-                        You'll receive an OTP to verify your number.
                     </p>
                     <div class="form-group">
-                        <label for="mobile-number">Mobile Number</label>
-                        <input type="tel" id="mobile-number" placeholder="+1 (555) 123-4567" class="form-input">
+                        <label>Mobile Number</label>
+                        <input type="tel" id="mobile-number" placeholder="+1 555 123 4567" class="form-input">
                     </div>
-                    <button class="btn-primary" onclick="sendOTP()">Send OTP</button>
+                    <button class="btn-primary" onclick="sendOTP()">
+                        <i class="fas fa-paper-plane"></i> Send OTP
+                    </button>
                     <p class="otp-timer" id="otp-timer"></p>
                 </div>
                 
                 <!-- Step 2: Enter OTP -->
                 <div id="step-otp" style="display: none;">
                     <p class="modal-description">
-                        Enter the 6-digit OTP sent to your mobile number.
-                        The code expires in 5 minutes.
+                        Enter the 6-digit OTP sent to your mobile. Expires in 60 seconds.
                     </p>
                     <div class="form-group">
-                        <label for="otp-code">OTP Code</label>
+                        <label>OTP Code</label>
                         <input type="text" id="otp-code" placeholder="Enter 6-digit OTP" class="form-input otp-input" maxlength="6">
                     </div>
-                    <button class="btn-primary" onclick="verifyOTP()">Verify OTP</button>
+                    <button class="btn-primary" onclick="verifyOTP()">
+                        <i class="fas fa-check"></i> Verify OTP
+                    </button>
                     <p class="resend-link">
-                        Didn't receive the code? 
-                        <a href="#" onclick="sendOTP(); return false;">Resend OTP</a>
+                        Didn't receive? <a href="#" onclick="sendOTP(); return false;">Resend OTP</a>
                     </p>
                 </div>
                 
                 <!-- Step 3: Verified -->
                 <div id="step-verified" style="display: none;">
                     <div class="success-message">
-                        <span class="success-icon">✓</span>
+                        <i class="fas fa-check-circle"></i>
                         <h4>Verification Successful!</h4>
-                        <p>Your mobile number has been verified.</p>
-                        <p class="verified-number" id="verified-number"></p>
+                        <p id="verified-number"></p>
                     </div>
                     <button class="btn-primary" onclick="closeVerificationModal()">Done</button>
                 </div>
                 
-                <!-- Error Message -->
                 <div class="error-message" id="verification-error" style="display: none;"></div>
-            </div>
         </div>
-    </div>
     
+    <script src="charts.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
-

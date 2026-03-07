@@ -20,6 +20,8 @@ class TransactionGenerator:
         self.locations = config.LOCATIONS
         self.merchants = config.MERCHANTS
         self.user_ids = config.USER_IDS
+        # Track last location for each user to detect sudden changes
+        self.user_last_location = {}
         
     def generate_transaction_id(self) -> str:
         """Generate unique transaction ID"""
@@ -30,15 +32,16 @@ class TransactionGenerator:
         return random.choice(self.user_ids)
     
     def generate_amount(self) -> float:
-        """
-        Generate random transaction amount.
-        Most transactions are small (normal), some are large (potential fraud)
-        """
-        # 80% normal transactions (small amounts), 20% large amounts
-        if random.random() < 0.8:
-            return round(random.uniform(1.0, 500.0), 2)
+        rand = random.random()
+        if rand < 0.5:
+            # Normal transactions (50%)
+            return round(random.uniform(1.0, 5000.0), 2)
+        elif rand < 0.8:
+            # Medium transactions (30%)
+            return round(random.uniform(5000.0, 50000.0), 2)
         else:
-            return round(random.uniform(500.0, config.MAX_TRANSACTION_AMOUNT), 2)
+            # High-value transactions - potential fraud (20%)
+            return round(random.uniform(50000.0, config.MAX_TRANSACTION_AMOUNT), 2)
     
     def generate_location(self) -> str:
         """Generate random transaction location"""
@@ -70,14 +73,28 @@ class TransactionGenerator:
                 - merchant: Merchant name
                 - card_present: Whether card was physically present
         """
+        user_id = self.generate_user_id()
+        
+        # Check for location change (for fraud detection)
+        last_location = self.user_last_location.get(user_id)
+        current_location = self.generate_location()
+        
+        # Update location history
+        self.user_last_location[user_id] = current_location
+        
+        # Detect sudden location change (potential fraud indicator)
+        location_changed = last_location is not None and last_location != current_location
+        
         return {
             'transaction_id': self.generate_transaction_id(),
-            'user_id': self.generate_user_id(),
+            'user_id': user_id,
             'amount': self.generate_amount(),
-            'location': self.generate_location(),
+            'location': current_location,
             'timestamp': self.generate_timestamp(),
             'merchant': self.generate_merchant(),
-            'card_present': self.generate_card_present()
+            'card_present': self.generate_card_present(),
+            'location_changed': location_changed,
+            'previous_location': last_location
         }
     
     def generate_batch(self, count: int = 10) -> List[Dict]:

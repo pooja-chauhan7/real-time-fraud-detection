@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔒 Real-Time Fraud Detection Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Alert Sound -->
+    <audio id="alert-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQoKJZPl" type="audio/wav">
+    </audio>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Fraud Detection System</h1>
+                    <span class="subtitle">Real-Time Banking Monitoring</span>
+                </div>
+            <div class="header-right">
+                <div class="system-status">
+                    <div class="status-item">
+                        <span class="status-dot connected" id="connection-dot"></span>
+                        <span id="connection-status">Connecting...</span>
+                    </div>
+                    <div class="status-item">
+                        <i class="fas fa-broadcast-tower"></i>
+                        <span id="stream-status">Stream: Off</span>
+                    </div>
+                <button class="btn-verify" id="btn-verify" onclick="showVerificationModal()">
+                    <i class="fas fa-mobile-alt"></i> Verify
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Total Transactions</h3>
+                    <p class="stat-value" id="total-transactions">0</p>
+                    <span class="stat-trend positive">
+                        <i class="fas fa-arrow-up"></i> <span id="txn-change">0</span>/min
+                    </span>
+                </div>
+
+            <div class="stat-card normal">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Normal Transactions</h3>
+                    <p class="stat-value" id="normal-transactions">0</p>
+                    <span class="stat-label">Approved</span>
+                </div>
+
+            <div class="stat-card fraud">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Fraud Detected</h3>
+                    <p class="stat-value" id="fraud-transactions">0</p>
+                    <span class="stat-label danger" id="fraud-percentage">0%</span>
+                </div>
+
+            <div class="stat-card alerts">
+                <div class="stat-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Active Alerts</h3>
+                    <p class="stat-value" id="active-alerts">0</p>
+                    <span class="stat-label">Requires Attention</span>
+                </div>
+
+            <div class="stat-card risk">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>High Risk</h3>
+                    <p class="stat-value" id="high-risk">0</p>
+                    <span class="stat-label">Transactions</span>
+                </div>
+        </div>
+
+        <!-- Risk Meter -->
+        <div class="risk-meter-section">
+            <div class="risk-meter-card">
+                <h3><i class="fas fa-gauge-high"></i> System Risk Level</h3>
+                <div class="risk-meter">
+                    <div class="meter-bg">
+                        <div class="meter-fill" id="risk-meter-fill"></div>
+                    <div class="meter-labels">
+                        <span class="low">Low</span>
+                        <span class="medium">Medium</span>
+                        <span class="high">High</span>
+                    </div>
+                    <div class="meter-value" id="risk-meter-value">0%</div>
+            </div>
+            <div class="risk-distribution">
+                <h3>Risk Distribution</h3>
+                <div class="distribution-bars">
+                    <div class="distribution-item">
+                        <span class="label">High Risk</span>
+                        <div class="bar-container">
+                            <div class="bar high" id="risk-bar-high"></div>
+                        <span class="count" id="risk-count-high">0</span>
+                    </div>
+                    <div class="distribution-item">
+                        <span class="label">Medium Risk</span>
+                        <div class="bar-container">
+                            <div class="bar medium" id="risk-bar-medium"></div>
+                        <span class="count" id="risk-count-medium">0</span>
+                    </div>
+                    <div class="distribution-item">
+                        <span class="label">Low Risk</span>
+                        <div class="bar-container">
+                            <div class="bar low" id="risk-bar-low"></div>
+                        <span class="count" id="risk-count-low">0</span>
+                    </div>
+            </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-pie"></i> Fraud vs Normal</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="fraudChart"></canvas>
+                </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-line"></i> Transaction Volume</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="volumeChart"></canvas>
+                </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-bar"></i> Risk Distribution</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="riskChart"></canvas>
+                </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><i class="fas fa-clock"></i> Activity Timeline</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- Transaction Table -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-list"></i> Transaction Monitor</h2>
+                        <div class="panel-actions">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="search-user" placeholder="Search User ID...">
+                            </div>
+                            <select id="filter-status" class="filter-select">
+                                <option value="">All Transactions</option>
+                                <option value="fraud">Fraud Only</option>
+                                <option value="normal">Normal Only</option>
+                                <option value="HIGH">High Risk</option>
+                                <option value="MEDIUM">Medium Risk</option>
+                            </select>
+                            <button class="btn-refresh" onclick="refreshTransactions()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    <div class="panel-content">
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>User ID</th>
+                                    <th>Amount</th>
+                                    <th>Location</th>
+                                    <th>Risk Score</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-body">
+                                <tr class="loading">
+                                    <td colspan="7">Loading transactions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                <!-- Suspicious Accounts -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-user-secret"></i> Suspicious Accounts</h2>
+                    </div>
+                    <div class="panel-content">
+                        <table id="suspicious-table">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Total Txns</th>
+                                    <th>Fraud Count</th>
+                                    <th>Avg Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suspicious-body">
+                                <tr class="loading">
+                                    <td colspan="4">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="right-panel">
+                <!-- Fraud Alerts -->
+                <div class="panel alerts-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-exclamation-circle"></i> Fraud Alerts</h2>
+                        <span class="badge" id="alert-count">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <div id="alerts-container">
+                            <div class="no-alerts">
+                                <i class="fas fa-shield-check"></i>
+                                <p>No fraud alerts detected</p>
+                            </div>
+                    </div>
+
+                <!-- Transaction Heatmap -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-map-marker-alt"></i> Transaction Locations</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div id="location-list" class="location-list">
+                            <div class="no-data">No location data</div>
+                    </div>
+            </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-card">
+                <h3><i class="fas fa-play"></i> Demo Controls</h3>
+                <div class="control-buttons">
+                    <button class="btn-demo" id="btn-start-stream" onclick="toggleStream()">
+                        <i class="fas fa-broadcast-tower"></i> Start Stream
+                    </button>
+                    <button class="btn-demo generate" onclick="generateDemo()">
+                        <i class="fas fa-plus"></i> Generate Demo
+                    </button>
+                    <button class="btn-demo download" onclick="downloadReport()">
+                        <i class="fas fa-download"></i> Download Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- CSV Upload Section -->
+            <div class="control-card upload-card">
+                <h3><i class="fas fa-file-upload"></i> Upload Bank Statement</h3>
+                <div class="upload-area" id="upload-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop CSV file or click to browse</p>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    <button class="btn-upload" onclick="document.getElementById('csv-file-input').click()">
+                        <i class="fas fa-folder-open"></i> Select CSV File
+                    </button>
+                </div>
+                <div class="upload-progress" id="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <span class="progress-text" id="progress-text">Uploading...</span>
+                </div>
+                <div class="upload-result" id="upload-result" style="display: none;">
+                    <div class="result-header">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Upload Complete</span>
+                    </div>
+                    <div class="result-stats" id="result-stats">
+                        <!-- Dynamic results will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <h3><i class="fas fa-server"></i> System Status</h3>
+                <div class="system-indicators">
+                    <div class="indicator">
+                        <span class="indicator-dot active"></span>
+                        <span>API Server</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-dot" id="kafka-status"></span>
+                        <span>Stream Engine</span>
+                    </div>
+                    <div class="indicator">
+                        <span class="indicator-dot active"></span>
+                        <span>Database</span>
+                    </div>
+            </div>
+    </div>
+
+    <!-- Verification Modal -->
+    <div class="modal" id="verification-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-mobile-alt"></i> Mobile Verification</h3>
+                <span class="modal-close" onclick="closeVerificationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="step-phone">
+                    <p class="modal-description">Enter your mobile number to receive fraud alerts.</p>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="tel" id="mobile-number" placeholder="+1 555 123 4567" class="form-input">
+                    </div>
+                    <button class="btn-primary" onclick="sendOTP()">
+                        <i class="fas fa-paper-plane"></i> Send OTP
+                    </button>
+                </div>
+                <div id="step-otp" style="display: none;">
+                    <p class="modal-description">Enter the 6-digit OTP sent to your mobile.</p>
+                    <div class="form-group">
+                        <label>OTP Code</label>
+                        <input type="text" id="otp-code" placeholder="Enter 6-digit OTP" class="form-input otp-input" maxlength="6">
+                    </div>
+                    <button class="btn-primary" onclick="verifyOTP()">
+                        <i class="fas fa-check"></i> Verify OTP
+                    </button>
+                    <p class="resend-link">
+                        Didn't receive? <a href="#" onclick="sendOTP(); return false;">Resend OTP</a>
+                    </p>
+                </div>
+                <div id="step-verified" style="display: none;">
+                    <div class="success-message">
+                        <i class="fas fa-check-circle"></i>
+                        <h4>Verification Successful!</h4>
+                        <p id="verified-number"></p>
+                    </div>
+                    <button class="btn-primary" onclick="closeVerificationModal()">Done</button>
+                </div>
+                <div class="error-message" id="verification-error" style="display: none;"></div>
+        </div>
+
+    <!-- Fraud Alert Popup -->
+    <div class="fraud-popup" id="fraud-popup">
+        <div class="popup-header">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>FRAUD ALERT!</span>
+            <span class="popup-close" onclick="closeFraudPopup()">&times;</span>
+        </div>
+        <div class="popup-body" id="fraud-popup-body">
+            <!-- Dynamic content -->
+        </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

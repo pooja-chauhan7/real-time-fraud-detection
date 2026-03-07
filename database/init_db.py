@@ -1,11 +1,12 @@
 """
 Database Initialization Script
-Initializes MongoDB database with collections and indexes
+Initializes SQLite database with all required tables
 """
 
+import sqlite3
+import os
 import logging
-from pymongo import MongoClient
-import config
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -14,146 +15,139 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Database file path
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'fraud_detection.db')
+
+
+def get_db_connection():
+    """Get SQLite database connection"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 
 def init_database():
-    """Initialize MongoDB database with collections and indexes"""
+    """Initialize database with all tables"""
+    
+    logger.info(f"Initializing database at: {DB_PATH}")
+    
+    # Read schema
+    schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
     
     try:
-        # Connect to MongoDB
-        client = MongoClient(config.get_mongo_uri())
-        db = client[config.MONGO_DB]
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-        logger.info(f"Connected to MongoDB: {config.MONGO_DB}")
+        # Read and execute schema
+        with open(schema_path, 'r') as f:
+            schema = f.read()
         
-        # Create collections
-        collections = ['transactions', 'alerts', 'users']
-        for collection in collections:
-            if collection not in db.list_collection_names():
-                db.create_collection(collection)
-                logger.info(f"Created collection: {collection}")
-            else:
-                logger.info(f"Collection already exists: {collection}")
+        cursor.executescript(schema)
+        conn.commit()
         
-        # Create indexes for transactions collection
-        transactions = db.transactions
-        transactions.create_index("transaction_id", unique=True)
-        transactions.create_index("user_id")
-        transactions.create_index("timestamp")
-        transactions.create_index("is_fraud")
-        transactions.create_index([("timestamp", -1)])
+        logger.info("Database tables created successfully!")
         
-        logger.info("Created indexes for transactions collection")
+        # Create sample data
+        create_sample_data(conn)
         
-        # Create indexes for alerts collection
-        alerts = db.alerts
-        alerts.create_index("transaction_id", unique=True)
-        alerts.create_index("alert_time")
-        alerts.create_index("status")
-        
-        logger.info("Created indexes for alerts collection")
-        
-        # Create sample data (optional)
-        create_sample_data(db)
+        conn.close()
         
         logger.info("Database initialization complete!")
-        
-        return db
+        return True
         
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         raise
 
 
-def create_sample_data(db):
-    """Create sample transaction data for testing"""
+def create_sample_data(conn):
+    """Create sample data for testing"""
     
-    from datetime import datetime, timedelta
-    import random
+    cursor = conn.cursor()
     
     # Check if data already exists
-    if db.transactions.count_documents({}) > 0:
+    cursor.execute("SELECT COUNT(*) as count FROM transactions")
+    if cursor.fetchone()[0] > 0:
         logger.info("Sample data already exists, skipping...")
         return
     
     logger.info("Creating sample data...")
     
-    sample_transactions = [
-        {
-            'transaction_id': 'TXN_SAMPLE_001',
-            'user_id': 'USER001',
-            'amount': 150.00,
-            'location': 'New York, USA',
-            'timestamp': datetime.now().isoformat(),
-            'merchant': 'Amazon',
-            'card_present': True,
-            'is_fraud': False
-        },
-        {
-            'transaction_id': 'TXN_SAMPLE_002',
-            'user_id': 'USER002',
-            'amount': 9500.00,
-            'location': 'Unknown',
-            'timestamp': (datetime.now() - timedelta(hours=1)).isoformat(),
-            'merchant': 'Unknown',
-            'card_present': False,
-            'is_fraud': True
-        },
-        {
-            'transaction_id': 'TXN_SAMPLE_003',
-            'user_id': 'USER003',
-            'amount': 75.50,
-            'location': 'Los Angeles, USA',
-            'timestamp': (datetime.now() - timedelta(hours=2)).isoformat(),
-            'merchant': 'Starbucks',
-            'card_present': True,
-            'is_fraud': False
-        },
-        {
-            'transaction_id': 'TXN_SAMPLE_004',
-            'user_id': 'USER004',
-            'amount': 6200.00,
-            'location': 'Tokyo, Japan',
-            'timestamp': (datetime.now() - timedelta(hours=3)).isoformat(),
-            'merchant': 'Unknown',
-            'card_present': False,
-            'is_fraud': True
-        },
-        {
-            'transaction_id': 'TXN_SAMPLE_005',
-            'user_id': 'USER005',
-            'amount': 45.00,
-            'location': 'London, UK',
-            'timestamp': (datetime.now() - timedelta(hours=4)).isoformat(),
-            'merchant': 'Netflix',
-            'card_present': True,
-            'is_fraud': False
-        }
+    # Sample users
+    sample_users = [
+        ('USER001', 'John Doe', 'john@example.com', 'password123', '+1234567890'),
+        ('USER002', 'Jane Smith', 'jane@example.com', 'password123', '+1234567891'),
+        ('USER003', 'Bob Wilson', 'bob@example.com', 'password123', '+1234567892'),
     ]
     
-    # Insert sample transactions
-    db.transactions.insert_many(sample_transactions)
-    logger.info(f"Inserted {len(sample_transactions)} sample transactions")
+    for user_id, username, email, password, mobile in sample_users:
+        cursor.execute("""
+            INSERT INTO users (user_id, username, email, password_hash, mobile_number, is_verified)
+            VALUES (?, ?, ?, ?, ?, 1)
+        """, (user_id, username, email, password, mobile))
+        
+        # Add to verified users
+        cursor.execute("""
+            INSERT INTO verified_users (user_id, username, email, mobile_number)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, username, email, mobile))
     
-    # Create sample alerts for fraud transactions
-    fraud_transactions = [t for t in sample_transactions if t['is_fraud']]
+    # Sample transactions (including some fraud)
+    sample_transactions = [
+        ('TXN001', 'USER001', 150.00, 'TRANSFER', 'ACC123456789', 'New York, USA', 0, 'LOW', 0.05),
+        ('TXN002', 'USER002', 55000.00, 'TRANSFER', 'ACC987654321', 'Los Angeles, USA', 1, 'HIGH', 0.95, 'High amount transaction'),
+        ('TXN003', 'USER001', 75.50, 'UPI', 'ACC111222333', 'New York, USA', 0, 'LOW', 0.02),
+        ('TXN004', 'USER003', 120000.00, 'INTERNATIONAL', 'ACC555666777', 'Tokyo, Japan', 1, 'CRITICAL', 0.99, 'Suspicious international transaction'),
+        ('TXN005', 'USER002', 45.00, 'CARD', 'ACC444555666', 'Chicago, USA', 0, 'LOW', 0.01),
+        ('TXN006', 'USER001', 250.00, 'UPI', 'ACC777888999', 'Boston, USA', 0, 'LOW', 0.08),
+        ('TXN007', 'USER003', 8500.00, 'TRANSFER', 'ACC111222333', 'Unknown Location', 1, 'HIGH', 0.85, 'Unusual location'),
+        ('TXN008', 'USER002', 320.00, 'CARD', 'ACC444555666', 'Houston, USA', 0, 'LOW', 0.03),
+    ]
     
-    sample_alerts = []
-    for txn in fraud_transactions:
-        alert = {
-            'transaction_id': txn['transaction_id'],
-            'user_id': txn['user_id'],
-            'amount': txn['amount'],
-            'timestamp': txn['timestamp'],
-            'alert_time': txn['timestamp'],
-            'status': 'new',
-            'risk_level': 'HIGH',
-            'description': f"High amount transaction detected: ${txn['amount']}"
-        }
-        sample_alerts.append(alert)
+    for txn in sample_transactions:
+        cursor.execute("""
+            INSERT INTO transactions (transaction_id, user_id, amount, transaction_type, 
+                                    receiver_account, location, is_fraud, risk_level, 
+                                    fraud_probability, fraud_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, txn)
     
-    if sample_alerts:
-        db.alerts.insert_many(sample_alerts)
-        logger.info(f"Inserted {len(sample_alerts)} sample alerts")
+    # Sample alerts for fraud transactions
+    cursor.execute("""
+        INSERT INTO alerts (alert_id, transaction_id, user_id, amount, alert_type, 
+                          alert_message, risk_level, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, ('ALT001', 'TXN002', 'USER002', 55000.00, 'HIGH_AMOUNT', 
+          'Transaction amount ₹55,000 exceeds threshold of ₹50,000', 'HIGH', 'new'))
+    
+    cursor.execute("""
+        INSERT INTO alerts (alert_id, transaction_id, user_id, amount, alert_type, 
+                          alert_message, risk_level, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, ('ALT002', 'TXN004', 'USER003', 120000.00, 'INTERNATIONAL_FRAUD', 
+          'Suspicious international transaction detected', 'CRITICAL', 'new'))
+    
+    cursor.execute("""
+        INSERT INTO alerts (alert_id, transaction_id, user_id, amount, alert_type, 
+                          alert_message, risk_level, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, ('ALT003', 'TXN007', 'USER003', 8500.00, 'UNUSUAL_LOCATION', 
+          'Transaction from unusual location', 'HIGH', 'new'))
+    
+    # Sample activity logs
+    cursor.execute("""
+        INSERT INTO activity_logs (user_id, activity_type, description)
+        VALUES (?, ?, ?)
+    """, ('USER001', 'LOGIN', 'User logged in successfully'))
+    
+    cursor.execute("""
+        INSERT INTO activity_logs (user_id, activity_type, description)
+        VALUES (?, ?, ?)
+    """, ('USER002', 'TRANSACTION', 'Transaction of ₹55,000 flagged as fraud'))
+    
+    conn.commit()
+    
+    logger.info("Sample data created successfully!")
 
 
 def main():

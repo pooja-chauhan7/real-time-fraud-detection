@@ -172,5 +172,5 @@ This dashboard is now:
 - ✅ Stable and bug-free
 - ✅ Easy to demonstrate
 
-Good luck with your college competition!
+
 
